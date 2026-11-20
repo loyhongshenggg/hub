@@ -1,0 +1,13 @@
+# <%- name %>
+
+<%- description || 'A hub app: Go API + React UI in one container.' %>
+
+```bash
+pnpm nx run <%- id %>:validate        # build, start, health-check, tear down
+pnpm nx serve <%- id %>-api           # API on :<%- port %> (no Docker)
+pnpm nx dev <%- webPackage %>          # UI with hot reload, proxies /api to the API
+```
+
+- `api/` Go (libs/go-appkit): add routes in `main.go`; data goes in `$DATA_DIR` (a Docker volume).
+- `web/` React (@hub/ui-kit, @hub/app-sdk): start in `src/app.tsx`.
+- Contract and troubleshooting: `docs/adding-an-app.md`.

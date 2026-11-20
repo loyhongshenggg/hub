@@ -1,0 +1,13 @@
+# The app's own services; the hub core adds the network, labels and HUB_* env
+# at start. No host ports: traffic arrives through the gateway.
+services:
+  app:
+    image: <%- JSON.stringify(image) %>
+    # The app must listen on 0.0.0.0:<%= port %> inside the container.
+    # environment:
+    #   TZ: Asia/Singapore
+    volumes:
+      - data:/data # change /data to wherever the image keeps its state
+
+volumes:
+  data:

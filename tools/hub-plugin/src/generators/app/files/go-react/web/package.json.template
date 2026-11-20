@@ -1,0 +1,10 @@
+{
+  "name": "<%= webPackage %>",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": <%- JSON.stringify("UI of the " + name + " hub app (built into the Go binary).") %>,
+  "dependencies": <%- deps.replace(/\n}$/, ',\n  "@hub/app-sdk": "workspace:*",\n  "@hub/ui-kit": "workspace:*"\n}') %>,
+  "devDependencies": <%- devDeps %>,
+  "nx": { "tags": ["scope:app", "app:<%= id %>", "lang:ts"] }
+}

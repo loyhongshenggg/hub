@@ -1,0 +1,12 @@
+# The app's own services; the hub core adds the network, labels and HUB_* env
+# at start. No host ports: traffic arrives through the gateway.
+services:
+  web:
+    build:
+      context: ../.. # repo root, so the build can use libs/
+      dockerfile: apps/<%= id %>/Dockerfile
+    volumes:
+      - data:/data
+
+volumes:
+  data:

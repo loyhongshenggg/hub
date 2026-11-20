@@ -1,0 +1,9 @@
+# <%- name %>
+
+<%- description || 'Runs the existing image `' + image + '` in the hub.' %>
+
+- Image: `<%- image %>`, HTTP port <%- port %>, health check `GET <%- healthPath %>`.
+- Persistent data: the `data` volume in `compose.yaml` — point it at the path the image writes to.
+- Validate: `pnpm nx run <%- id %>:validate`. If health fails, check the image listens on `0.0.0.0:<%- port %>` and that `<%- healthPath %>` answers 2xx (a redirect to a login page is not 2xx; pick another path).
+
+See `docs/adding-an-app.md`.

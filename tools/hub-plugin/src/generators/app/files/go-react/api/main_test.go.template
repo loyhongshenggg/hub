@@ -1,0 +1,17 @@
+package main
+
+import (
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"hub.localhost/libs/go-appkit"
+)
+
+func TestHello(t *testing.T) {
+	rec := httptest.NewRecorder()
+	hello(appkit.Config{AppID: "<%= id %>"})(rec, httptest.NewRequest("GET", "/api/hello", nil))
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"appId":"<%= id %>"`) {
+		t.Fatalf("got %d %s", rec.Code, rec.Body)
+	}
+}

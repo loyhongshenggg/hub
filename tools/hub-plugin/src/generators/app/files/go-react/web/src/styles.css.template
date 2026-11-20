@@ -1,0 +1,2 @@
+@import 'tailwindcss';
+@import '@hub/ui-kit/theme.css';

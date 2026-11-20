@@ -31,13 +31,14 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
 - One language per Nx project root (Go and TS targets share names). Mixed libs nest the TS package: `libs/manifest` (Go) + `libs/manifest/ts` (`@hub/manifest`).
 - Shell/ui-kit: React 19 + Vite 8 + Tailwind v4 + Radix; TanStack Query (server state, kept live by `/api/events` SSE) + Zustand (UI state). ui-kit components are hand-written in shadcn/ui style; `@hub/ui-kit/theme.css` holds the tokens and `@source`s itself for consumers.
 - App layout (see `apps/hello`): `app.manifest.yaml`, `compose.yaml`, `Dockerfile` (build context = repo root; `.dockerignore` at root), `api/` Go module embedding `web/` build via `api/ui/dist`, `web/` React app whose `package.json` lists its own deps (Docker installs with `--filter <web>...`). Tags: `scope:app`, `app:<id>` on all three projects.
-- ESLint 9, not 10: eslint-plugin-react / jsx-a11y / import don't support 10 yet (checked 2026-11-20).
+- ESLint 9, not 10: eslint-plugin-react / jsx-a11y / import don't support 10 yet (checked 2026-11-20). ESLint 9 is marked deprecated upstream — move to 10 once those plugins support it.
+- After adding/removing a TS project or workspace dep: `pnpm install && pnpm nx sync` (TS project references), or Nx tasks stop with "workspace is out of sync".
 - Manifest schema: `libs/manifest/schema/v<N>.schema.json` is the source of truth. TS types are generated (`codegen` target, runs before build/typecheck); Go types are hand-written and a test fails if they drift.
 
 ## Status
 
 - [x] Phase 0 — environment (2026-11-20)
-- [ ] Phase 1 — foundations
+- [x] Phase 1 — foundations (2026-11-20)
   - [x] Nx 24 workspace created (ts preset, pnpm)
   - [x] Workspace layout: `platform/`, `apps/`, `libs/`, `tools/` in pnpm-workspace.yaml; drop `packages/`
   - [x] Go: `go.work`, `@naxodev/gonx` 5.x, ESLint + `@nx/enforce-module-boundaries` tags
@@ -47,9 +48,9 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
   - [x] libs/ui-kit — tokens + shadcn-style components (pulled forward for the shell)
   - [x] libs/app-sdk, libs/go-appkit
   - [x] apps/hello — reference app
-  - [ ] tools/hub-plugin — `nx g @hub/plugin:app <id>`
-  - [ ] .claude/skills/hub-app — create / plug in an app
-  - [ ] docs/adding-an-app.md
+  - [x] tools/hub-plugin — `nx g @hub/plugin:app <id>` (go-react + image templates)
+  - [x] .claude/skills/hub-app — create / plug in an app
+  - [x] docs/adding-an-app.md
 - [ ] Phase 2 — dev ergonomics
 - [ ] Phase 3 — platform services
 

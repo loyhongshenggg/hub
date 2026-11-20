@@ -1,0 +1,61 @@
+{
+  "name": "@hub/plugin",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "@hub/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "executor": "@nx/js:tsc",
+        "outputs": [
+          "{options.outputPath}"
+        ],
+        "options": {
+          "outputPath": "tools/hub-plugin/dist",
+          "main": "tools/hub-plugin/src/index.ts",
+          "tsConfig": "tools/hub-plugin/tsconfig.lib.json",
+          "rootDir": "tools/hub-plugin/src",
+          "generatePackageJson": false,
+          "assets": [
+            {
+              "input": "./tools/hub-plugin/src",
+              "glob": "**/!(*.ts)",
+              "output": "."
+            },
+            {
+              "input": "./tools/hub-plugin/src",
+              "glob": "**/*.d.ts",
+              "output": "."
+            }
+          ]
+        }
+      }
+    },
+    "tags": [
+      "scope:tool",
+      "lang:ts"
+    ]
+  },
+  "dependencies": {
+    "@nx/devkit": "24.0.6",
+    "tslib": "^2.3.0"
+  },
+  "generators": "./generators.json",
+  "files": [
+    "dist",
+    "!**/*.tsbuildinfo",
+    "generators.json"
+  ]
+}

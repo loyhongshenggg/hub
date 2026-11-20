@@ -1,5 +1,6 @@
 {
   "yaml.schemas": {
     "./libs/manifest/schema/v1.schema.json": "apps/*/app.manifest.yaml"
-  }
+  },
+  "eslint.validate": ["json"]
 }

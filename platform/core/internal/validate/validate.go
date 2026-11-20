@@ -142,13 +142,13 @@ func (r *run) checkUI(ctx context.Context, addr, host string, m *manifest.Manife
 		return r.fail("ui", fmt.Errorf("GET %s → %s (want 2xx; ui.path must serve the page directly)", m.UI.Path, resp.Status))
 	}
 	ct, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type"))
-	if ct != "text/html" {
-		return r.fail("ui", fmt.Errorf("GET %s → Content-Type %q, want text/html", m.UI.Path, ct))
+	if ct != "text/html" && ct != "application/xhtml+xml" {
+		r.warn("ui", "GET %s → Content-Type %q, not HTML; the tab will show it as-is", m.UI.Path, ct)
 	}
 	if resp.Header.Get("X-Frame-Options") != "" || strings.Contains(strings.ToLower(resp.Header.Get("Content-Security-Policy")), "frame-ancestors") {
 		r.warn("ui", "app sends X-Frame-Options / frame-ancestors; the gateway strips them so the shell can frame it")
 	}
-	r.ok("ui", "GET %s → %s text/html (frameable)", m.UI.Path, resp.Status)
+	r.ok("ui", "GET %s → %s (frameable)", m.UI.Path, resp.Status)
 	return nil
 }
 

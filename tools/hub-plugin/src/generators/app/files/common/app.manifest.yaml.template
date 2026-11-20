@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../libs/manifest/schema/v1.schema.json
+manifestVersion: 1
+id: <%= id %>
+name: <%- JSON.stringify(name) %>
+description: <%- JSON.stringify(description) %>
+icon: ./icon.svg
+runtime:
+  driver: docker
+  compose: ./compose.yaml
+  service: <%= template === 'image' ? 'app' : 'web' %>
+  port: <%= port %>
+health:
+  path: <%= healthPath %>
+  startTimeout: <%= template === 'image' ? '120s' : '30s' %>
+ui:
+  path: /
+  keepAlive: true
+autoStart: false

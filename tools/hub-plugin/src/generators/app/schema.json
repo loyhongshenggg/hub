@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/schema",
+  "$id": "HubApp",
+  "title": "Create a hub app",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "App id: folder name, subdomain (<id>.hub.localhost) and compose project (hub-<id>).",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "maxLength": 40,
+      "$default": { "$source": "argv", "index": 0 },
+      "x-prompt": "App id (lowercase, e.g. notes or time-tracker)?"
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name in the dock and tabs. Default: the id in Title Case.",
+      "maxLength": 40
+    },
+    "description": {
+      "type": "string",
+      "description": "One line shown on the home grid.",
+      "default": "",
+      "maxLength": 200
+    },
+    "template": {
+      "type": "string",
+      "description": "go-react: Go API embedding a React UI (like apps/hello). image: run an existing Docker image.",
+      "enum": ["go-react", "image"],
+      "default": "go-react"
+    },
+    "image": {
+      "type": "string",
+      "description": "Docker image to run (template=image), e.g. ghcr.io/owner/app:1.2."
+    },
+    "port": {
+      "type": "integer",
+      "description": "HTTP port inside the container.",
+      "minimum": 1,
+      "maximum": 65535,
+      "default": 8080
+    },
+    "healthPath": {
+      "type": "string",
+      "description": "Path that returns 2xx when ready. Default: /healthz (go-react), / (image).",
+      "pattern": "^/"
+    },
+    "skipInstall": {
+      "type": "boolean",
+      "description": "Don't run pnpm install afterwards.",
+      "default": false,
+      "x-priority": "internal"
+    }
+  },
+  "required": ["id"]
+}

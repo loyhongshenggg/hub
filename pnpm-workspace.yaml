@@ -13,6 +13,8 @@ allowBuilds:
   tree-sitter-go: false
   esbuild: false
   '@swc/core': false
+  '@parcel/watcher': false
+  unrs-resolver: false
 minimumReleaseAgeExclude:
   - '@tanstack/query-core@5.108.2'
   - '@tanstack/react-query@5.108.2'

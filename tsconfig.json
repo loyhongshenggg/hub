@@ -17,6 +17,9 @@
     },
     {
       "path": "./apps/hello/web"
+    },
+    {
+      "path": "./tools/hub-plugin"
     }
   ]
 }

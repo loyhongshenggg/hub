@@ -1,0 +1,44 @@
+// Command <%= id %> is the API of the <%- name.replace(/\n/g, " ") %> hub app. It embeds the
+// React UI from ../web and serves both on one port.
+package main
+
+import (
+	"embed"
+	"encoding/json"
+	"io/fs"
+	"net/http"
+	"os"
+
+	"hub.localhost/libs/go-appkit"
+)
+
+// ui/dist is filled by the Docker build (or `pnpm nx build <%= id %>-api`).
+//
+//go:embed all:ui
+var uiFS embed.FS
+
+func main() {
+	app := appkit.New()
+	// Persistent files go here (a Docker volume, kept across power off/on).
+	dataDir := appkit.Env("DATA_DIR", "/data")
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		app.Log.Error("data dir", "error", err)
+		os.Exit(1)
+	}
+
+	app.Mux.HandleFunc("GET /api/hello", hello(app.Config))
+	ui, _ := fs.Sub(uiFS, "ui/dist")
+	app.Mux.Handle("/", appkit.SPA(ui))
+
+	if err := app.Run(); err != nil {
+		app.Log.Error("server", "error", err)
+		os.Exit(1)
+	}
+}
+
+func hello(cfg appkit.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": <%- JSON.stringify("Hello from " + name + "!") %>, "appId": cfg.AppID})
+	}
+}

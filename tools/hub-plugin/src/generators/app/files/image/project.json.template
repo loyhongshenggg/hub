@@ -1,0 +1,13 @@
+{
+  "name": "<%= id %>",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "tags": ["scope:app", "app:<%= id %>"],
+  "targets": {
+    "validate": {
+      "description": "Pull, start, health-check and tear down a throwaway instance (hub validate).",
+      "command": "go run ./platform/core/cmd/hub validate <%= id %>",
+      "cache": false
+    }
+  }
+}

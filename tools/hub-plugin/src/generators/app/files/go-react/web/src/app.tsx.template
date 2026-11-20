@@ -1,0 +1,34 @@
+import type { HubClient } from '@hub/app-sdk';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@hub/ui-kit';
+import { useEffect, useState } from 'react';
+
+export function App({ hub }: { hub: HubClient }) {
+  const [message, setMessage] = useState('…');
+
+  useEffect(() => {
+    fetch('/api/hello')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${r.statusText}`))))
+      .then((d: { message: string }) => setMessage(d.message), (e: Error) => setMessage(`API error: ${e.message}`));
+  }, []);
+
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 px-6 py-10">
+      <header className="flex items-center gap-4">
+        <img src="/icon.svg" alt="" className="size-12" />
+        <h1 className="text-2xl font-semibold tracking-tight">{<%- JSON.stringify(name) %>}</h1>
+      </header>
+      <Card>
+        <CardHeader>
+          <CardTitle>{message}</CardTitle>
+          <CardDescription>
+            {hub.inShell ? 'Running inside the hub.' : 'Opened directly (not inside the hub).'} Edit
+            apps/<%= id %>/web/src/app.tsx to start.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          API: apps/<%= id %>/api/main.go · Bridge: hub.setBadge(), hub.notify(), hub.openApp(), hub.setTitle()
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
