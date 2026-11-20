@@ -12,7 +12,9 @@ import (
 	"strings"
 )
 
-// static is filled by the shell build (`pnpm nx build @hub/shell`).
+// static/dist is filled by `pnpm nx build core` (target core:embed-shell
+// copies the shell build there). static/.gitkeep keeps the embed pattern valid
+// before the first build.
 //
 //go:embed all:static
 var static embed.FS
@@ -30,7 +32,7 @@ func Handler(devURL string) (http.Handler, error) {
 			FlushInterval: -1,
 		}, nil
 	}
-	files, err := fs.Sub(static, "static")
+	files, err := fs.Sub(static, "static/dist")
 	if err != nil {
 		return nil, err
 	}

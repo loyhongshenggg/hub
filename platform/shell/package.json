@@ -1,0 +1,14 @@
+{
+  "name": "@hub/shell",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "tags": [
+      "scope:platform",
+      "lang:ts"
+    ]
+  },
+  "dependencies": {
+    "@hub/ui-kit": "workspace:*"
+  }
+}

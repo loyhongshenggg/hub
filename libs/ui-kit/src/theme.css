@@ -1,0 +1,111 @@
+/*
+ * hub design tokens + Tailwind v4 theme. Import after tailwindcss:
+ *   @import 'tailwindcss';
+ *   @import '@hub/ui-kit/theme.css';
+ * Dark mode: put class="dark" on <html>.
+ */
+@import 'tw-animate-css';
+
+/* Let consumers' Tailwind see the classes used by ui-kit components. */
+@source './';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  color-scheme: light;
+  --radius: 0.625rem;
+  --background: oklch(0.985 0.003 250);
+  --foreground: oklch(0.22 0.02 262);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.56 0.2 260);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.955 0.006 255);
+  --secondary-foreground: oklch(0.27 0.02 262);
+  --muted: oklch(0.955 0.006 255);
+  --muted-foreground: oklch(0.52 0.02 262);
+  --accent: oklch(0.94 0.014 258);
+  --accent-foreground: oklch(0.27 0.02 262);
+  --destructive: oklch(0.58 0.21 27);
+  --success: oklch(0.64 0.16 152);
+  --warning: oklch(0.76 0.15 75);
+  --border: oklch(0.915 0.006 255);
+  --input: oklch(0.89 0.008 255);
+  --ring: oklch(0.62 0.17 260);
+  --sidebar: oklch(0.96 0.007 255);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-accent: oklch(0.915 0.016 258);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.17 0.008 262);
+  --foreground: oklch(0.94 0.005 255);
+  --card: oklch(0.21 0.01 262);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.23 0.01 262);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.66 0.17 260);
+  --primary-foreground: oklch(0.16 0.01 262);
+  --secondary: oklch(0.26 0.012 262);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.25 0.01 262);
+  --muted-foreground: oklch(0.7 0.015 258);
+  --accent: oklch(0.28 0.02 262);
+  --accent-foreground: var(--foreground);
+  --destructive: oklch(0.66 0.19 25);
+  --success: oklch(0.7 0.15 152);
+  --warning: oklch(0.8 0.14 75);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.6 0.15 260);
+  --sidebar: oklch(0.145 0.008 262);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-accent: oklch(0.26 0.02 262);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono:
+    ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}

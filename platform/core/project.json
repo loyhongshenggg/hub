@@ -10,16 +10,53 @@
         "outputPath": "dist/platform/core/hub",
         "flags": ["-trimpath"]
       },
-      "inputs": ["goSource", "^goSource", "{projectRoot}/internal/shellui/static/**/*"]
+      "inputs": [
+        "goSource",
+        "^goSource",
+        "{projectRoot}/internal/shellui/static/**/*"
+      ],
+      "dependsOn": ["generate", "embed-shell"]
     },
     "serve": {
-      "options": { "main": "cmd/hub/main.go", "args": ["serve"] }
+      "options": {
+        "main": "cmd/hub/main.go",
+        "args": ["serve"]
+      }
     },
     "integration": {
       "description": "Docker driver tests against the real engine.",
       "command": "go test -count=1 ./internal/runtime/docker/",
-      "options": { "cwd": "{projectRoot}", "env": { "HUB_DOCKER_TESTS": "1" } },
+      "options": {
+        "cwd": "{projectRoot}",
+        "env": {
+          "HUB_DOCKER_TESTS": "1"
+        }
+      },
       "cache": false
+    },
+    "embed-shell": {
+      "description": "Copy the shell build into the core's embed folder.",
+      "command": "rm -rf internal/shellui/static/dist && cp -r ../../dist/platform/shell internal/shellui/static/dist",
+      "options": {
+        "cwd": "{projectRoot}"
+      },
+      "dependsOn": ["@hub/shell:build"],
+      "inputs": [
+        {
+          "dependentTasksOutputFiles": "**/*"
+        }
+      ],
+      "outputs": ["{projectRoot}/internal/shellui/static/dist"],
+      "cache": true
+    },
+    "dev": {
+      "description": "Core + shell dev server with HMR at http://hub.localhost:7000.",
+      "continuous": true,
+      "command": "go run ./cmd/hub serve --shell-dev http://localhost:5173",
+      "options": {
+        "cwd": "{projectRoot}"
+      },
+      "dependsOn": ["@hub/shell:serve"]
     }
   }
 }

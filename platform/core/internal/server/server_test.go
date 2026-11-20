@@ -124,7 +124,8 @@ func TestHostRouting(t *testing.T) {
 		t.Errorf("unknown host: %d", resp.StatusCode)
 	}
 	resp, body := e.do(t, "GET", shellHost, "/", "")
-	if resp.StatusCode != 200 || !strings.Contains(body, "hub core is running") {
+	// Either the embedded shell build or the "not built yet" page.
+	if resp.StatusCode != 200 || !strings.Contains(body, "<title>hub</title>") {
 		t.Errorf("shell: %d %q", resp.StatusCode, body)
 	}
 	if got := resp.Header.Get("Content-Security-Policy"); got != "frame-ancestors 'none'" {
@@ -145,7 +146,8 @@ func TestAPIAndGateway(t *testing.T) {
 		list.Apps[0].Icon != "/api/apps/notes/icon" || !list.Apps[0].KeepAlive {
 		t.Fatalf("apps = %+v", list.Apps)
 	}
-	if len(list.Problems) != 1 || list.Problems[0].ID != "broken" {
+	if len(list.Problems) != 1 || list.Problems[0].ID != "broken" || list.Problems[0].Path != "apps/broken/app.manifest.yaml" ||
+		!strings.HasPrefix(list.Problems[0].Error, "invalid manifest:") {
 		t.Errorf("problems = %+v", list.Problems)
 	}
 

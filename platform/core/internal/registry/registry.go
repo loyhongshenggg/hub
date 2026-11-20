@@ -48,7 +48,10 @@ func Scan(appsDir string) (Result, error) {
 			err = fmt.Errorf("id %q must match its folder name %q", m.ID, e.Name())
 		}
 		if err != nil {
-			res.Problems = append(res.Problems, Problem{ID: e.Name(), Path: path, Error: err.Error()})
+			// Show paths relative to the repo (apps/<id>/…), not absolute.
+			rel, _ := filepath.Rel(filepath.Dir(appsDir), path)
+			msg := strings.TrimPrefix(err.Error(), path+": ")
+			res.Problems = append(res.Problems, Problem{ID: e.Name(), Path: rel, Error: msg})
 			continue
 		}
 		res.Apps = append(res.Apps, m)

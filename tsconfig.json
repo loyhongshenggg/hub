@@ -5,6 +5,12 @@
   "references": [
     {
       "path": "./libs/manifest/ts"
+    },
+    {
+      "path": "./platform/shell"
+    },
+    {
+      "path": "./libs/ui-kit"
     }
   ]
 }

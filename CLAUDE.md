@@ -19,7 +19,9 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
 - Re-provision: `sudo bash tools/setup/wsl-toolchain.sh apple <git-email>` (idempotent).
 - Browser on Windows: `http://hub.localhost:7000` (Chrome/Edge/Firefox resolve `*.localhost`).
 - Nx 24.0.6 workspace, created with `--preset=ts --pm=pnpm`, package scope `@hub`.
-- Run the core: `pnpm nx serve core` (or `pnpm nx build core` → `dist/platform/core/hub serve`). Docker tests: `pnpm nx run core:integration`.
+- Dev: `pnpm nx dev core` → shell (Vite + HMR) served through the core at `http://hub.localhost:7000`.
+- Build: `pnpm nx build core` → `dist/platform/core/hub` with the shell embedded; run `dist/platform/core/hub serve`.
+- Docker tests: `pnpm nx run core:integration`.
 
 ## Conventions
 
@@ -27,6 +29,8 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
 - Go modules: path `hub.localhost/<repo-path>` (reserved TLD, never fetched). Add each to `go.work`. A module that imports another workspace module also gets `require <path> v0.0.0` + `replace <path> => ../..` so `go mod tidy` and Docker builds work without `go.work`.
 - Go projects need a `project.json` with `name` + `tags` (gonx ignores `--tags`). Go `lint` = `go vet` (nx.json targetDefaults).
 - One language per Nx project root (Go and TS targets share names). Mixed libs nest the TS package: `libs/manifest` (Go) + `libs/manifest/ts` (`@hub/manifest`).
+- Shell/ui-kit: React 19 + Vite 8 + Tailwind v4 + Radix; TanStack Query (server state, kept live by `/api/events` SSE) + Zustand (UI state). ui-kit components are hand-written in shadcn/ui style; `@hub/ui-kit/theme.css` holds the tokens and `@source`s itself for consumers.
+- ESLint 9, not 10: eslint-plugin-react / jsx-a11y / import don't support 10 yet (checked 2026-11-20).
 - Manifest schema: `libs/manifest/schema/v<N>.schema.json` is the source of truth. TS types are generated (`codegen` target, runs before build/typecheck); Go types are hand-written and a test fails if they drift.
 
 ## Status
@@ -38,8 +42,9 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
   - [x] Go: `go.work`, `@naxodev/gonx` 5.x, ESLint + `@nx/enforce-module-boundaries` tags
   - [x] libs/manifest — JSON Schema + Go/TS types
   - [x] platform/core — registry, docker driver, lifecycle, gateway, SSE, SQLite, `hub` CLI + `validate`
-  - [ ] platform/shell — dock, home grid, power toggles, keep-alive tabs, logs drawer, light/dark
-  - [ ] libs/app-sdk, libs/go-appkit, libs/ui-kit
+  - [x] platform/shell — dock, home grid, power toggles, keep-alive tabs, logs drawer, light/dark
+  - [x] libs/ui-kit — tokens + shadcn-style components (pulled forward for the shell)
+  - [ ] libs/app-sdk, libs/go-appkit
   - [ ] apps/hello — reference app
   - [ ] tools/hub-plugin — `nx g @hub/plugin:app <id>`
   - [ ] .claude/skills/hub-app — create / plug in an app

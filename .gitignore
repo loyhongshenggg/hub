@@ -46,5 +46,8 @@ Thumbs.db
 
 .nx/polygraph
 # shell build output embedded into the core binary
-/platform/core/internal/shellui/static/*
-!/platform/core/internal/shellui/static/.gitkeep
+/platform/core/internal/shellui/static/dist/
+
+vite.config.*.timestamp*
+vitest.config.*.timestamp*
+.vitest

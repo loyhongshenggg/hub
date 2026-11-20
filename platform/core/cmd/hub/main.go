@@ -43,7 +43,8 @@ Usage:
   hub validate <id> [--keep] [--root DIR] [--data DIR]
   hub version
 
-Environment: HUB_ADDR (default 127.0.0.1:7000), HUB_ROOT, HUB_DATA.
+Environment: HUB_ADDR (default 127.0.0.1:7000), HUB_ROOT, HUB_DATA,
+HUB_LOG_REQUESTS=1 (log every HTTP request).
 `
 
 func main() {
@@ -196,8 +197,12 @@ func serve(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("listen %s (is another hub running?): %w", cfg.Addr, err)
 	}
+	var handler http.Handler = srv
+	if os.Getenv("HUB_LOG_REQUESTS") == "1" {
+		handler = logRequests(srv, log)
+	}
 	hs := &http.Server{
-		Handler:           srv,
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		BaseContext:       func(net.Listener) context.Context { return ctx }, // ends SSE streams on shutdown
 	}
@@ -373,3 +378,21 @@ func validateCmd(ctx context.Context, args []string) error {
 		Driver: drv, AppsDir: cfg.AppsDir(), ID: pos[0], AppHost: cfg.AppHost, Out: os.Stdout, Keep: *keep,
 	})
 }
+
+// logRequests logs every request when HUB_LOG_REQUESTS=1 (debugging).
+func logRequests(next http.Handler, log *slog.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rec := &statusRecorder{ResponseWriter: w, status: 200}
+		next.ServeHTTP(rec, r)
+		log.Info("http", "method", r.Method, "host", r.Host, "path", r.URL.RequestURI(), "status", rec.status, "dur", time.Since(start).Round(time.Millisecond))
+	})
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (s *statusRecorder) WriteHeader(code int)        { s.status = code; s.ResponseWriter.WriteHeader(code) }
+func (s *statusRecorder) Unwrap() http.ResponseWriter { return s.ResponseWriter }

@@ -4,6 +4,7 @@
     "esbenp.prettier-vscode",
     "golang.go",
     "redhat.vscode-yaml",
-    "dbaeumer.vscode-eslint"
+    "dbaeumer.vscode-eslint",
+    "bradlc.vscode-tailwindcss"
   ]
 }
