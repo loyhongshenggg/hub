@@ -45,3 +45,6 @@ Thumbs.db
 .claude/settings.local.json
 
 .nx/polygraph
+# shell build output embedded into the core binary
+/platform/core/internal/shellui/static/*
+!/platform/core/internal/shellui/static/.gitkeep

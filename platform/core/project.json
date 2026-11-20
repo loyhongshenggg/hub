@@ -1,0 +1,25 @@
+{
+  "name": "core",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "tags": ["scope:platform", "lang:go"],
+  "targets": {
+    "build": {
+      "options": {
+        "main": "cmd/hub/main.go",
+        "outputPath": "dist/platform/core/hub",
+        "flags": ["-trimpath"]
+      },
+      "inputs": ["goSource", "^goSource", "{projectRoot}/internal/shellui/static/**/*"]
+    },
+    "serve": {
+      "options": { "main": "cmd/hub/main.go", "args": ["serve"] }
+    },
+    "integration": {
+      "description": "Docker driver tests against the real engine.",
+      "command": "go test -count=1 ./internal/runtime/docker/",
+      "options": { "cwd": "{projectRoot}", "env": { "HUB_DOCKER_TESTS": "1" } },
+      "cache": false
+    }
+  }
+}

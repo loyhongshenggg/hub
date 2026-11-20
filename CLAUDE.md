@@ -19,6 +19,7 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
 - Re-provision: `sudo bash tools/setup/wsl-toolchain.sh apple <git-email>` (idempotent).
 - Browser on Windows: `http://hub.localhost:7000` (Chrome/Edge/Firefox resolve `*.localhost`).
 - Nx 24.0.6 workspace, created with `--preset=ts --pm=pnpm`, package scope `@hub`.
+- Run the core: `pnpm nx serve core` (or `pnpm nx build core` → `dist/platform/core/hub serve`). Docker tests: `pnpm nx run core:integration`.
 
 ## Conventions
 
@@ -36,7 +37,7 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
   - [x] Workspace layout: `platform/`, `apps/`, `libs/`, `tools/` in pnpm-workspace.yaml; drop `packages/`
   - [x] Go: `go.work`, `@naxodev/gonx` 5.x, ESLint + `@nx/enforce-module-boundaries` tags
   - [x] libs/manifest — JSON Schema + Go/TS types
-  - [ ] platform/core — registry, docker driver, lifecycle, gateway, SSE, SQLite, `hub` CLI + `validate`
+  - [x] platform/core — registry, docker driver, lifecycle, gateway, SSE, SQLite, `hub` CLI + `validate`
   - [ ] platform/shell — dock, home grid, power toggles, keep-alive tabs, logs drawer, light/dark
   - [ ] libs/app-sdk, libs/go-appkit, libs/ui-kit
   - [ ] apps/hello — reference app

@@ -124,18 +124,28 @@ States: `stopped → starting → running → stopping → stopped`, plus `error
 
 Live status reaches the shell over SSE.
 
+Each app has a worker that drives its actual state toward the requested one, so overlapping power presses resolve in order (off during a start cancels the health wait, then runs `down`). Failed starts and crashes stay in `error` (containers kept for logs) until the next power press. Shutting the core down leaves apps running; the next start re-adopts them.
+
 ## 6. Core API (shell-facing)
 
 ```
-GET  /api/apps                        list apps + status
-POST /api/apps/{id}/start|stop|restart
-GET  /api/apps/{id}/logs              live log stream (SSE)
-GET  /api/events                      live status changes (SSE)
+GET   /api/apps                        {apps: AppInfo[], problems: [{id, path, error}]}
+GET   /api/apps/{id}                   AppInfo
+POST  /api/apps/{id}/start|stop|restart   202 AppInfo (progress via /api/events)
+PATCH /api/apps/{id}                   prefs: {pinned?, position?, autoStart?: bool|null}
+GET   /api/apps/{id}/icon              icon file (sandboxed CSP)
+GET   /api/apps/{id}/logs?tail=200&follow=1   SSE "log" events {service, stream, text}
+GET   /api/events                      SSE "apps" event: full list on connect + after every change
+GET   /api/state/{key}  PUT …          opaque shell UI state (JSON), e.g. open tabs
 ```
 
-CLI: `hub serve`, `hub apps ls|start|stop|logs <id>`, `hub validate <id>`.
+Request guards: unknown `Host` headers get 421 (DNS-rebinding defence); non-GET `/api` calls with a foreign `Origin` or a `Sec-Fetch-Site` other than `same-origin`/`none` get 403, so app iframes can't drive the API. Apps may only be framed by the shell (`frame-ancestors http://hub.localhost:7000`).
 
-`hub validate <id>`: schema-check the manifest → build → start → wait for health → check the page is frameable → stop. Pass/fail with logs.
+CLI: `hub serve`, `hub apps ls|start|stop|restart|logs <id>`, `hub validate <id>`. The CLI talks to the running core at `HUB_ADDR` (default `127.0.0.1:7000`). Data (SQLite, generated compose overrides) lives in `~/.local/share/hub`.
+
+`hub validate <id>`: schema-check the manifest → build → start a throwaway `hub-validate-<id>` project → wait for health → `GET ui.path` must be 2xx `text/html` → `down --volumes`. Pass/fail, with the last log lines on failure.
+
+`HUB_CORE_URL` is the browser-facing shell URL; the core listens on loopback only, so containers can't call it directly (Phase 3 platform services will add a path).
 
 ## 7. Shell ⇄ app bridge (`@hub/app-sdk`, optional)
 

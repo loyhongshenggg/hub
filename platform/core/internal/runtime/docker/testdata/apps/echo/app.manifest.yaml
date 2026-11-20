@@ -1,0 +1,5 @@
+manifestVersion: 1
+id: echo
+name: Echo
+runtime: {driver: docker, service: web, port: 8080}
+health: {path: /healthz, startTimeout: 30s}
