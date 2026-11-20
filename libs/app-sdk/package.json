@@ -1,0 +1,25 @@
+{
+  "name": "@hub/app-sdk",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "nx": {
+    "tags": [
+      "scope:lib",
+      "lang:ts"
+    ]
+  },
+  "dependencies": {},
+  "description": "Optional bridge between a hub app (in its iframe) and the hub shell: context, theme, badge, notify, openApp, title.",
+  "sideEffects": false
+}

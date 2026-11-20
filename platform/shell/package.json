@@ -9,6 +9,7 @@
     ]
   },
   "dependencies": {
+    "@hub/app-sdk": "workspace:*",
     "@hub/ui-kit": "workspace:*"
   }
 }

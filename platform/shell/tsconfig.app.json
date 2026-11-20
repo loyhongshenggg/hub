@@ -37,6 +37,9 @@
   "references": [
     {
       "path": "../../libs/ui-kit/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/app-sdk/tsconfig.lib.json"
     }
   ]
 }

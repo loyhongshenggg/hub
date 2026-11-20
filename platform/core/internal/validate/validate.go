@@ -73,7 +73,11 @@ func Run(ctx context.Context, opts Options) (err error) {
 	if m.ID != opts.ID {
 		return r.fail("manifest", fmt.Errorf("id %q must match its folder name %q", m.ID, opts.ID))
 	}
-	r.ok("manifest", "%s (v%d)", path, m.ManifestVersion)
+	shown := path
+	if rel, err := filepath.Rel(filepath.Dir(opts.AppsDir), path); err == nil {
+		shown = rel
+	}
+	r.ok("manifest", "%s (v%d)", shown, m.ManifestVersion)
 
 	if err := opts.Driver.Prepare(ctx); err != nil {
 		return r.fail("docker", err)

@@ -28,6 +28,7 @@
     "@nx/vite": "24.0.6",
     "@nx/vitest": "24.0.6",
     "@nx/web": "24.0.6",
+    "@swc/cli": "~0.8.1",
     "@swc/core": "~1.15.5",
     "@swc/helpers": "~0.5.18",
     "@tailwindcss/vite": "4.3.5",

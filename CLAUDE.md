@@ -30,6 +30,7 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
 - Go projects need a `project.json` with `name` + `tags` (gonx ignores `--tags`). Go `lint` = `go vet` (nx.json targetDefaults).
 - One language per Nx project root (Go and TS targets share names). Mixed libs nest the TS package: `libs/manifest` (Go) + `libs/manifest/ts` (`@hub/manifest`).
 - Shell/ui-kit: React 19 + Vite 8 + Tailwind v4 + Radix; TanStack Query (server state, kept live by `/api/events` SSE) + Zustand (UI state). ui-kit components are hand-written in shadcn/ui style; `@hub/ui-kit/theme.css` holds the tokens and `@source`s itself for consumers.
+- App layout (see `apps/hello`): `app.manifest.yaml`, `compose.yaml`, `Dockerfile` (build context = repo root; `.dockerignore` at root), `api/` Go module embedding `web/` build via `api/ui/dist`, `web/` React app whose `package.json` lists its own deps (Docker installs with `--filter <web>...`). Tags: `scope:app`, `app:<id>` on all three projects.
 - ESLint 9, not 10: eslint-plugin-react / jsx-a11y / import don't support 10 yet (checked 2026-11-20).
 - Manifest schema: `libs/manifest/schema/v<N>.schema.json` is the source of truth. TS types are generated (`codegen` target, runs before build/typecheck); Go types are hand-written and a test fails if they drift.
 
@@ -44,8 +45,8 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
   - [x] platform/core — registry, docker driver, lifecycle, gateway, SSE, SQLite, `hub` CLI + `validate`
   - [x] platform/shell — dock, home grid, power toggles, keep-alive tabs, logs drawer, light/dark
   - [x] libs/ui-kit — tokens + shadcn-style components (pulled forward for the shell)
-  - [ ] libs/app-sdk, libs/go-appkit
-  - [ ] apps/hello — reference app
+  - [x] libs/app-sdk, libs/go-appkit
+  - [x] apps/hello — reference app
   - [ ] tools/hub-plugin — `nx g @hub/plugin:app <id>`
   - [ ] .claude/skills/hub-app — create / plug in an app
   - [ ] docs/adding-an-app.md

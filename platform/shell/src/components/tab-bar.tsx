@@ -2,8 +2,10 @@ import { Badge, cn } from '@hub/ui-kit';
 import { House, WifiOff, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useApps } from '../api/apps';
+import { useBridgeState } from '../state/bridge';
 import { useTabs } from '../state/tabs';
 import { AppIcon } from './app-icon';
+import { BadgeCount } from './dock';
 import { StatusDot } from './status';
 
 function Tab({
@@ -53,6 +55,7 @@ function Tab({
 export function TabBar({ connected }: { connected: boolean }) {
   const { data } = useApps();
   const { open, active, activate, closeApp } = useTabs();
+  const { badges, titles } = useBridgeState();
   return (
     <div
       role="tablist"
@@ -74,7 +77,10 @@ export function TabBar({ connected }: { connected: boolean }) {
             onClose={() => closeApp(id)}
           >
             <AppIcon app={app} size={16} />
-            <span className="truncate">{app.name}</span>
+            <span className="truncate" title={titles[id] ?? app.name}>
+              {titles[id] ?? app.name}
+            </span>
+            <BadgeCount count={badges[id]} />
             <StatusDot status={app.status} />
           </Tab>
         );

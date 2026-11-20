@@ -51,3 +51,8 @@ Thumbs.db
 vite.config.*.timestamp*
 vitest.config.*.timestamp*
 .vitest
+
+# app UI builds embedded into app binaries
+/apps/*/api/ui/dist/
+/apps/*/api/tmp-data/
+out-tsc

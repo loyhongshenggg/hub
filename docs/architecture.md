@@ -93,9 +93,11 @@ apps/notes/
 └─ web/               # React + Vite, uses @hub/app-sdk (optional)
 ```
 
+The app image is built by `docker compose` with the repo root as build context (so it can use `libs/`); `apps/hello/Dockerfile` is the template: Vite build → Go build embedding the UI → distroless image.
+
 Rules:
 
-1. One HTTP port, inside the container. No host ports published.
+1. One HTTP port, inside the container. No host ports published. No `container_name` (it would clash with `hub validate`'s throwaway instance).
 2. `GET <health.path>` returns 2xx when ready.
 3. Serve the UI at `/`. Absolute paths are fine (each app owns its origin).
 4. Persist data in named volumes. Power off keeps volumes.
@@ -155,6 +157,8 @@ postMessage, typed, versioned protocol.
 - app → shell: `ready()`, `setBadge(n)`, `notify(msg)`, `openApp(id, path)`, `setTitle()`
 
 The gateway strips `X-Frame-Options` / `frame-ancestors` from app responses so apps can be framed by the shell.
+
+Envelope: `{ hub: 1, type, ...fields }`. The SDK derives the shell origin from its own (`notes.hub.localhost` → `hub.localhost`) and only talks to it; the shell only accepts messages whose `source` is an open app iframe and whose `origin` is that app's origin, then validates the fields. Theme is pushed to every app frame on change; badges and titles reset when the app stops.
 
 ## 8. Monorepo layout
 

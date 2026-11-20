@@ -5,21 +5,40 @@ import { api } from '../api/client';
 export interface TabsState {
   open: string[];
   active: string | null;
-  openApp: (id: string) => void;
+  /** Start path for a tab opened via openApp(id, path); used once, when its iframe mounts. */
+  paths: Record<string, string>;
+  openApp: (id: string, path?: string) => void;
+  /** Read and forget the start path of a tab. */
+  takePath: (id: string) => string | undefined;
   closeApp: (id: string) => void;
   activate: (id: string | null) => void;
   /** Drop tabs of apps that no longer exist. */
   prune: (known: Set<string>) => void;
 }
 
-export const useTabs = create<TabsState>((set) => ({
+export const useTabs = create<TabsState>((set, get) => ({
   open: [],
   active: null,
-  openApp: (id) =>
-    set((s) => ({
-      open: s.open.includes(id) ? s.open : [...s.open, id],
-      active: id,
-    })),
+  paths: {},
+  openApp: (id, path) =>
+    set((s) =>
+      s.open.includes(id)
+        ? { active: id }
+        : {
+            open: [...s.open, id],
+            active: id,
+            paths: path ? { ...s.paths, [id]: path } : s.paths,
+          },
+    ),
+  takePath: (id) => {
+    const path = get().paths[id];
+    if (path !== undefined) {
+      const paths = { ...get().paths };
+      delete paths[id];
+      set({ paths });
+    }
+    return path;
+  },
   closeApp: (id) =>
     set((s) => {
       const i = s.open.indexOf(id);

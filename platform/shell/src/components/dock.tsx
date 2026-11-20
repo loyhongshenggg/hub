@@ -2,6 +2,7 @@ import { cn, Tooltip, TooltipContent, TooltipTrigger } from '@hub/ui-kit';
 import type { ReactNode } from 'react';
 import { dockApps, useApps } from '../api/apps';
 import type { AppInfo } from '../api/types';
+import { useBridgeState } from '../state/bridge';
 import { useTabs } from '../state/tabs';
 import { AppIcon } from './app-icon';
 import { statusLabel, StatusDot } from './status';
@@ -42,8 +43,30 @@ function DockButton({
   );
 }
 
+export function BadgeCount({
+  count,
+  className,
+}: {
+  count: number | undefined;
+  className?: string;
+}) {
+  if (!count) return null;
+  return (
+    <span
+      aria-label={`${count} new`}
+      className={cn(
+        'grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] leading-none font-semibold text-white',
+        className,
+      )}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
+
 function DockApp({ app }: { app: AppInfo }) {
   const { active, openApp } = useTabs();
+  const badge = useBridgeState((s) => s.badges[app.id]);
   return (
     <DockButton
       label={`${app.name} — ${statusLabel[app.status]}`}
@@ -54,6 +77,10 @@ function DockApp({ app }: { app: AppInfo }) {
       <StatusDot
         status={app.status}
         className="absolute right-1 bottom-1 size-2.5 ring-2 ring-sidebar"
+      />
+      <BadgeCount
+        count={badge}
+        className="absolute -top-0.5 -right-0.5 ring-2 ring-sidebar"
       />
     </DockButton>
   );

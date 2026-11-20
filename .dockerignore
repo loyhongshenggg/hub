@@ -1,0 +1,13 @@
+# App images build with the repo root as context; keep it small.
+**/node_modules
+**/dist
+**/out-tsc
+**/test-output
+**/.vite
+**/*.tsbuildinfo
+.git
+.nx
+.claude
+.vscode
+tmp
+coverage

@@ -11,6 +11,12 @@
     },
     {
       "path": "./libs/ui-kit"
+    },
+    {
+      "path": "./libs/app-sdk"
+    },
+    {
+      "path": "./apps/hello/web"
     }
   ]
 }

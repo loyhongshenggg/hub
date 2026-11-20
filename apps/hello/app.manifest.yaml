@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../libs/manifest/schema/v1.schema.json
+manifestVersion: 1
+id: hello
+name: Hello
+description: Reference app — Go API + React UI, talks to the shell through @hub/app-sdk
+icon: ./icon.svg
+runtime:
+  driver: docker
+  compose: ./compose.yaml
+  service: web
+  port: 8080
+health:
+  path: /healthz
+  startTimeout: 30s
+ui:
+  path: /
+  keepAlive: true
+autoStart: false

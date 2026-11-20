@@ -1,5 +1,6 @@
 import { Button } from '@hub/ui-kit';
 import { Loader2, Power, ScrollText } from 'lucide-react';
+import { useState } from 'react';
 import { useAppAction, useApps } from '../api/apps';
 import type { AppInfo } from '../api/types';
 import { useTabs } from '../state/tabs';
@@ -28,18 +29,27 @@ export function TabPanels() {
 }
 
 function AppPanel({ app, active }: { app: AppInfo; active: boolean }) {
-  if (app.status === 'running' && (active || app.keepAlive)) {
-    return (
-      <iframe
-        title={app.name}
-        src={app.url + app.uiPath}
-        hidden={!active}
-        allow="clipboard-read; clipboard-write; fullscreen"
-        className="absolute inset-0 size-full border-0 bg-background"
-      />
-    );
-  }
+  if (app.status === 'running' && (active || app.keepAlive))
+    return <AppFrame app={app} active={active} />;
   return active ? <OffPanel app={app} /> : null;
+}
+
+function AppFrame({ app, active }: { app: AppInfo; active: boolean }) {
+  // src is fixed at mount: changing it would navigate (reload) the app.
+  const [src] = useState(
+    () => app.url + (useTabs.getState().takePath(app.id) ?? app.uiPath),
+  );
+  return (
+    <iframe
+      title={app.name}
+      src={src}
+      hidden={!active}
+      data-app-id={app.id}
+      data-origin={app.url}
+      allow="clipboard-read; clipboard-write; fullscreen"
+      className="absolute inset-0 size-full border-0 bg-background"
+    />
+  );
 }
 
 const message: Record<AppInfo['status'], string> = {
