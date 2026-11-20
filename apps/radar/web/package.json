@@ -1,0 +1,30 @@
+{
+  "name": "@hub/radar-web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "UI of the Radar hub app (built into the Go binary).",
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "lucide-react": "1.77.0",
+    "@hub/app-sdk": "workspace:*",
+    "@hub/ui-kit": "workspace:*"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "tailwindcss": "4.3.5",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.0"
+  },
+  "nx": {
+    "tags": [
+      "scope:app",
+      "app:radar",
+      "lang:ts"
+    ]
+  }
+}

@@ -16,7 +16,7 @@
     },
     "build": {
       "dependsOn": ["generate", "embed-ui"],
-      "options": { "outputPath": "dist/apps/<%= id %>/api/app" },
+      "options": { "main": "main.go", "outputPath": "dist/apps/<%= id %>/api/app" },
       "inputs": ["goSource", "^goSource", "{projectRoot}/ui/**/*"]
     },
     "serve": {

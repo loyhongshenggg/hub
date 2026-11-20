@@ -2,6 +2,7 @@ go 1.27.4
 
 use (
 	./apps/hello/api
+	./apps/radar/api
 	./libs/go-appkit
 	./libs/manifest
 	./platform/core

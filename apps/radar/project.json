@@ -1,0 +1,19 @@
+{
+  "name": "radar",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "tags": ["scope:app", "app:radar"],
+  "implicitDependencies": ["radar-api", "@hub/radar-web"],
+  "targets": {
+    "validate": {
+      "description": "Build, start, health-check and tear down a throwaway instance (hub validate).",
+      "command": "go run ./platform/core/cmd/hub validate radar",
+      "cache": false
+    },
+    "docker-build": {
+      "description": "Build the app image the way the core does.",
+      "command": "docker compose -p hub-radar -f apps/radar/compose.yaml build",
+      "cache": false
+    }
+  }
+}

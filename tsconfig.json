@@ -20,6 +20,9 @@
     },
     {
       "path": "./tools/hub-plugin"
+    },
+    {
+      "path": "./apps/radar/web"
     }
   ]
 }

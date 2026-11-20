@@ -1,0 +1,108 @@
+# News feeds Radar follows, grouped by category. Edit freely: Radar re-reads
+# this file on start. Sources you remove stop being fetched; saved items stay.
+# All URLs were checked on 2026-11-20.
+categories:
+  - { id: swe, name: SWE }
+  - { id: security, name: Security }
+  - { id: ai, name: AI }
+
+sources:
+  # SWE
+  - {
+      id: hn,
+      name: Hacker News (best),
+      category: swe,
+      url: 'https://hnrss.org/best',
+    }
+  - {
+      id: lobsters,
+      name: Lobsters,
+      category: swe,
+      url: 'https://lobste.rs/rss',
+    }
+  - {
+      id: pragmatic,
+      name: The Pragmatic Engineer,
+      category: swe,
+      url: 'https://newsletter.pragmaticengineer.com/feed',
+    }
+  - {
+      id: github-blog,
+      name: GitHub Blog,
+      category: swe,
+      url: 'https://github.blog/feed/',
+    }
+  # Security
+  - {
+      id: thehackernews,
+      name: The Hacker News,
+      category: security,
+      url: 'https://feeds.feedburner.com/TheHackersNews',
+    }
+  - {
+      id: bleeping,
+      name: BleepingComputer,
+      category: security,
+      url: 'https://www.bleepingcomputer.com/feed/',
+    }
+  - {
+      id: krebs,
+      name: Krebs on Security,
+      category: security,
+      url: 'https://krebsonsecurity.com/feed/',
+    }
+  - {
+      id: schneier,
+      name: Schneier on Security,
+      category: security,
+      url: 'https://www.schneier.com/feed/atom/',
+    }
+  - {
+      id: project-zero,
+      name: Google Project Zero,
+      category: security,
+      url: 'https://googleprojectzero.blogspot.com/feeds/posts/default',
+    }
+  - {
+      id: cisa,
+      name: CISA advisories,
+      category: security,
+      url: 'https://www.cisa.gov/cybersecurity-advisories/all.xml',
+    }
+  # AI
+  - {
+      id: simonw,
+      name: Simon Willison,
+      category: ai,
+      url: 'https://simonwillison.net/atom/everything/',
+    }
+  - {
+      id: openai,
+      name: OpenAI,
+      category: ai,
+      url: 'https://openai.com/news/rss.xml',
+    }
+  - {
+      id: deepmind,
+      name: Google DeepMind,
+      category: ai,
+      url: 'https://deepmind.google/blog/rss.xml',
+    }
+  - {
+      id: huggingface,
+      name: Hugging Face,
+      category: ai,
+      url: 'https://huggingface.co/blog/feed.xml',
+    }
+  - {
+      id: latent-space,
+      name: Latent Space,
+      category: ai,
+      url: 'https://www.latent.space/feed',
+    }
+  - {
+      id: import-ai,
+      name: Import AI,
+      category: ai,
+      url: 'https://jack-clark.net/feed/',
+    }

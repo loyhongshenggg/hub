@@ -1,0 +1,40 @@
+{
+  "name": "radar-api",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "tags": ["scope:app", "app:radar", "lang:go"],
+  "implicitDependencies": ["@hub/radar-web"],
+  "targets": {
+    "embed-ui": {
+      "description": "Copy the web build into ui/dist for go:embed.",
+      "command": "rm -rf ui/dist && cp -r ../web/dist ui/dist",
+      "options": {
+        "cwd": "{projectRoot}"
+      },
+      "dependsOn": ["@hub/radar-web:build"],
+      "inputs": [
+        {
+          "dependentTasksOutputFiles": "**/*"
+        }
+      ],
+      "outputs": ["{projectRoot}/ui/dist"],
+      "cache": true
+    },
+    "build": {
+      "dependsOn": ["generate", "embed-ui"],
+      "options": {
+        "outputPath": "dist/apps/radar/api/app",
+        "main": "main.go"
+      },
+      "inputs": ["goSource", "^goSource", "{projectRoot}/ui/**/*"]
+    },
+    "serve": {
+      "options": {
+        "env": {
+          "PORT": "8080",
+          "DATA_DIR": "./tmp-data"
+        }
+      }
+    }
+  }
+}

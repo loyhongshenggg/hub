@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../libs/manifest/schema/v1.schema.json
+manifestVersion: 1
+id: radar
+name: 'Radar'
+description: 'Mentors, a learning path, and live SWE / security / AI news'
+icon: ./icon.svg
+runtime:
+  driver: docker
+  compose: ./compose.yaml
+  service: web
+  port: 8080
+health:
+  path: /healthz
+  startTimeout: 30s
+ui:
+  path: /
+  keepAlive: true
+autoStart: false
+
+# Dev mode (power menu → "Dev mode"): the core runs these on the host with
+# live reload instead of the container, and routes the app's URL to `web`.
+dev:
+  route: web
+  processes:
+    - name: api
+      dir: api
+      command: go run .
+      watch: ['*.go', go.mod] # restart the API when Go files change
+    - name: web
+      dir: web
+      command: pnpm exec vite # hot reload; proxies /api and /healthz to the API
+

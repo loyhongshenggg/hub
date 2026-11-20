@@ -18,6 +18,7 @@ export {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './components/dropdown-menu';
+export { Input } from './components/input';
 export { Switch } from './components/switch';
 export {
   Tooltip,

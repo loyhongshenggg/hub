@@ -8,19 +8,33 @@
     "embed-ui": {
       "description": "Copy the web build into ui/dist for go:embed.",
       "command": "rm -rf ui/dist && cp -r ../web/dist ui/dist",
-      "options": { "cwd": "{projectRoot}" },
+      "options": {
+        "cwd": "{projectRoot}"
+      },
       "dependsOn": ["@hub/hello-web:build"],
-      "inputs": [{ "dependentTasksOutputFiles": "**/*" }],
+      "inputs": [
+        {
+          "dependentTasksOutputFiles": "**/*"
+        }
+      ],
       "outputs": ["{projectRoot}/ui/dist"],
       "cache": true
     },
     "build": {
       "dependsOn": ["generate", "embed-ui"],
-      "options": { "outputPath": "dist/apps/hello/api/hello" },
+      "options": {
+        "outputPath": "dist/apps/hello/api/hello",
+        "main": "main.go"
+      },
       "inputs": ["goSource", "^goSource", "{projectRoot}/ui/**/*"]
     },
     "serve": {
-      "options": { "env": { "PORT": "8080", "DATA_DIR": "./tmp-data" } }
+      "options": {
+        "env": {
+          "PORT": "8080",
+          "DATA_DIR": "./tmp-data"
+        }
+      }
     }
   }
 }

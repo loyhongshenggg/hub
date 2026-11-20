@@ -53,7 +53,7 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
   - [x] docs/adding-an-app.md
 - [ ] Phase 2 — dev ergonomics (driven by building `apps/radar`; design approved 2026-11-20)
   - [x] Dev mode: manifest `dev:` block, core process driver, shell + CLI ([ADR-0008](docs/adr/0008-dev-mode-host-processes.md))
-  - [ ] radar: news fetching + UI
+  - [x] radar: news fetching + UI (16 feeds, SQLite, read/saved/search)
   - [ ] radar: mentors, learning path, badge/notify
   - [ ] Rebuild button
   - [ ] CPU/RAM per app
