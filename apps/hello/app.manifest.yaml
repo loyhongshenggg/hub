@@ -16,3 +16,16 @@ ui:
   path: /
   keepAlive: true
 autoStart: false
+
+# Dev mode (power menu → "Dev mode"): the core runs these on the host with
+# live reload instead of the container, and routes the app's URL to `web`.
+dev:
+  route: web
+  processes:
+    - name: api
+      dir: api
+      command: go run .
+      watch: ['*.go', go.mod] # restart the API when Go files change
+    - name: web
+      dir: web
+      command: pnpm exec vite # hot reload; proxies /api and /healthz to the API

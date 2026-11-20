@@ -75,4 +75,684 @@ export interface AppManifestV1 {
    * Start the app when the core starts.
    */
   autoStart?: boolean;
+  /**
+   * Optional dev mode: the core runs these processes on the host (live reload) instead of the containers, and routes the app's URL to one of them.
+   */
+  dev?: {
+    /**
+     * Name of the process the gateway routes to (it serves the UI and health path). Default: the first process.
+     */
+    route?: string;
+    /**
+     * Processes to run. Each gets its own free port in $PORT; every process also sees $HUB_PORT_<NAME> for all of them.
+     *
+     * @minItems 1
+     * @maxItems 8
+     */
+    processes:
+      | [
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          }
+        ]
+      | [
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          }
+        ]
+      | [
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          }
+        ]
+      | [
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          }
+        ]
+      | [
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          }
+        ]
+      | [
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          }
+        ]
+      | [
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          }
+        ]
+      | [
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          },
+          {
+            /**
+             * Short name, e.g. api or web.
+             */
+            name: string;
+            /**
+             * Working directory, relative to the manifest. Default: the app folder.
+             */
+            dir?: string;
+            /**
+             * Shell command (run with /bin/sh -c).
+             */
+            command: string;
+            /**
+             * File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.
+             */
+            watch?: string[];
+          }
+        ];
+  };
 }

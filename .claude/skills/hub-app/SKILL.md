@@ -25,7 +25,7 @@ Ask for the app id if it isn't obvious: lowercase, digits, single dashes (`notes
 pnpm nx g @hub/plugin:app <id> --description="<one line>" [--name="<Display Name>"] [--port=8080]
 ```
 
-Then build the feature: API routes in `apps/<id>/api/main.go` (use `appkit` helpers; persist under `$DATA_DIR`), UI in `apps/<id>/web/src/app.tsx` (use `@hub/ui-kit` components so it looks native; `@hub/app-sdk` for badge/notify/openApp/setTitle). Add Go tests next to the code.
+Iterate in Dev mode (`go run ./platform/core/cmd/hub apps start <id> --dev` against a running core, or the app menu in the shell): UI hot reload, Go restarts in about a second, logs via `hub apps logs <id>`. Then build the feature: API routes in `apps/<id>/api/main.go` (use `appkit` helpers; persist under `$DATA_DIR`), UI in `apps/<id>/web/src/app.tsx` (use `@hub/ui-kit` components so it looks native; `@hub/app-sdk` for badge/notify/openApp/setTitle). Add Go tests next to the code.
 
 **Image**
 

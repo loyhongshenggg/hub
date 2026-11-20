@@ -6,7 +6,7 @@ import { useBridgeState } from '../state/bridge';
 import { useTabs } from '../state/tabs';
 import { AppIcon } from './app-icon';
 import { BadgeCount } from './dock';
-import { StatusDot } from './status';
+import { DevTag, StatusDot } from './status';
 
 function Tab({
   active,
@@ -81,6 +81,7 @@ export function TabBar({ connected }: { connected: boolean }) {
               {titles[id] ?? app.name}
             </span>
             <BadgeCount count={badges[id]} />
+            <DevTag app={app} />
             <StatusDot status={app.status} />
           </Tab>
         );

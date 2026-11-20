@@ -228,3 +228,86 @@ func TestChangesNotify(t *testing.T) {
 		t.Fatal("no change notification")
 	}
 }
+
+func setupModes(t *testing.T) (*Manager, *fake.Driver, *fake.Driver) {
+	run, dev := fake.New(t, ok), fake.New(t, ok)
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	withDev := testApp("notes")
+	withDev.Dev = &manifest.Dev{Processes: []manifest.DevProcess{{Name: "web", Command: "x"}}}
+	mg := New(ctx, Options{
+		Driver: run, DevDriver: dev, Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		AppHost:        func(id string) string { return id + ".hub.localhost:7000" },
+		HealthInterval: 10 * time.Millisecond,
+	})
+	mg.Sync(registry.Result{Apps: []*manifest.Manifest{withDev, testApp("plain")}})
+	go mg.Run(ctx)
+	return mg, run, dev
+}
+
+func TestDevMode(t *testing.T) {
+	mg, run, dev := setupModes(t)
+	if err := mg.StartMode("plain", ModeDev); err != ErrNoDevMode {
+		t.Fatalf("dev without a dev block: %v", err)
+	}
+
+	if err := mg.StartMode("notes", ModeDev); err != nil {
+		t.Fatal(err)
+	}
+	if s := waitFor(t, mg, "notes", Running); s.Mode != ModeDev || dev.Starts.Load() != 1 || run.Starts.Load() != 0 {
+		t.Fatalf("mode=%s dev starts=%d run starts=%d", s.Mode, dev.Starts.Load(), run.Starts.Load())
+	}
+
+	// A container event for the app is stale while it runs in dev mode.
+	run.EventsC <- runtime.Event{Kind: runtime.EventDied, AppID: "notes", Project: "hub-notes", Service: "web"}
+	time.Sleep(20 * time.Millisecond)
+	if s, _ := mg.Get("notes"); s.State != Running {
+		t.Fatalf("container event broke a dev app: %s", s.State)
+	}
+
+	// Restart keeps the mode.
+	mg.Restart("notes")
+	for dev.Starts.Load() < 2 {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if s := waitFor(t, mg, "notes", Running); s.Mode != ModeDev || run.Starts.Load() != 0 {
+		t.Fatalf("restart changed mode: %s", s.Mode)
+	}
+
+	// Switching to run stops the dev instance first.
+	mg.StartMode("notes", ModeRun)
+	for run.Starts.Load() < 1 {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if s := waitFor(t, mg, "notes", Running); s.Mode != ModeRun || dev.Stops.Load() != 2 {
+		t.Fatalf("after switch: mode=%s dev stops=%d", s.Mode, dev.Stops.Load())
+	}
+}
+
+func TestRestartIntoDev(t *testing.T) {
+	mg, run, dev := setupModes(t)
+	mg.Start("notes")
+	waitFor(t, mg, "notes", Running)
+	if err := mg.RestartMode("notes", ModeDev); err != nil {
+		t.Fatal(err)
+	}
+	for dev.Starts.Load() < 1 {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if s := waitFor(t, mg, "notes", Running); s.Mode != ModeDev || run.Stops.Load() != 1 {
+		t.Fatalf("mode=%s run stops=%d", s.Mode, run.Stops.Load())
+	}
+	if err := mg.RestartMode("plain", ModeDev); err != ErrNoDevMode {
+		t.Errorf("plain: %v", err)
+	}
+}
+
+func TestDevProcessDeathFailsApp(t *testing.T) {
+	mg, _, dev := setupModes(t)
+	mg.StartMode("notes", ModeDev)
+	waitFor(t, mg, "notes", Running)
+	dev.EventsC <- runtime.Event{Kind: runtime.EventDied, AppID: "notes", Project: "hub-notes", Service: "api", ExitCode: "2"}
+	if s := waitFor(t, mg, "notes", Error); !strings.Contains(s.Error, `dev process "api" exited (code 2)`) {
+		t.Errorf("error = %q", s.Error)
+	}
+}

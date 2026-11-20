@@ -33,7 +33,22 @@ const (
 	Error    State = "error"
 )
 
-var ErrUnknownApp = errors.New("unknown app")
+var (
+	ErrUnknownApp = errors.New("unknown app")
+	ErrNoDevMode  = errors.New("this app has no dev mode (add a dev: block to its app.manifest.yaml)")
+)
+
+// Mode is how an app runs: its containers (Run) or host processes with live
+// reload (Dev).
+type Mode string
+
+const (
+	ModeRun Mode = "run"
+	ModeDev Mode = "dev"
+)
+
+// devMinStartTimeout: dev servers compile on first start, so allow longer.
+const devMinStartTimeout = 2 * time.Minute
 
 // Snapshot is the public view of one app.
 type Snapshot struct {
@@ -42,13 +57,15 @@ type Snapshot struct {
 	Error string
 	Since time.Time
 	Addr  string // gateway target, set while Running
+	Mode  Mode   // of the current (or last) instance
 	// Removed: the manifest is gone; the app disappears once stopped.
 	Removed bool
 }
 
 type Options struct {
-	Driver runtime.Driver
-	Log    *slog.Logger
+	Driver    runtime.Driver // Run mode (containers)
+	DevDriver runtime.Driver // Dev mode (host processes); nil disables it
+	Log       *slog.Logger
 	// AppHost returns the Host header an app sees, e.g. notes.hub.localhost:7000.
 	AppHost func(id string) string
 	// Health tuning (tests); zero values use HealthCheck defaults.
@@ -75,11 +92,13 @@ type app struct {
 	removed bool
 	crashed bool // error came from the container dying while running
 
-	target  State // Running, Stopped, or "" = hold (after errors)
-	restart bool  // stop first, then go to target
-	adopt   bool  // next start skips `compose up`: containers already run
-	cancel  context.CancelFunc
-	kick    chan struct{}
+	target   State // Running, Stopped, or "" = hold (after errors)
+	restart  bool  // stop first, then go to target
+	adopt    bool  // next start skips `compose up`: containers already run
+	mode     Mode  // of the current (or last) instance
+	wantMode Mode  // mode of the next start
+	cancel   context.CancelFunc
+	kick     chan struct{}
 }
 
 // New returns a manager whose workers live until ctx ends.
@@ -111,7 +130,7 @@ func (mg *Manager) Sync(res registry.Result) {
 			a.m, a.removed = m, false
 			continue
 		}
-		a := &app{m: m, state: Stopped, since: time.Now(), kick: make(chan struct{}, 1)}
+		a := &app{m: m, state: Stopped, since: time.Now(), mode: ModeRun, wantMode: ModeRun, kick: make(chan struct{}, 1)}
 		mg.apps[m.ID] = a
 		go mg.worker(a)
 	}
@@ -161,7 +180,7 @@ func (mg *Manager) Problems() []registry.Problem {
 }
 
 func (a *app) snapshot() Snapshot {
-	return Snapshot{App: a.m, State: a.state, Error: a.err, Since: a.since, Addr: a.addr, Removed: a.removed}
+	return Snapshot{App: a.m, State: a.state, Error: a.err, Since: a.since, Addr: a.addr, Mode: a.mode, Removed: a.removed}
 }
 
 func (mg *Manager) lookup(id string) (*app, error) {
@@ -172,8 +191,17 @@ func (mg *Manager) lookup(id string) (*app, error) {
 	return a, nil
 }
 
-// Start powers an app on. It returns at once; watch Changes for progress.
-func (mg *Manager) Start(id string) error {
+// Start powers an app on in Run mode. See StartMode.
+func (mg *Manager) Start(id string) error { return mg.StartMode(id, ModeRun) }
+
+// DevAvailable reports whether an app can run in Dev mode.
+func (mg *Manager) DevAvailable(m *manifest.Manifest) bool {
+	return mg.opts.DevDriver != nil && m.Dev != nil
+}
+
+// StartMode powers an app on in the given mode. If it is running in the
+// other mode, it is stopped first. Returns at once; watch Changes.
+func (mg *Manager) StartMode(id string, mode Mode) error {
 	mg.mu.Lock()
 	defer mg.mu.Unlock()
 	a, err := mg.lookup(id)
@@ -183,8 +211,20 @@ func (mg *Manager) Start(id string) error {
 	if a.removed {
 		return fmt.Errorf("app %q was removed from the apps folder", id)
 	}
-	a.target = Running
-	if a.state == Stopped || a.state == Error {
+	if mode == ModeDev && !mg.DevAvailable(a.m) {
+		return ErrNoDevMode
+	}
+	a.target, a.wantMode = Running, mode
+	switch {
+	case a.state != Stopped && a.mode != mode: // switch modes: stop the old instance first
+		a.restart = true
+		if a.cancel != nil {
+			a.cancel()
+		}
+		if a.state == Running || a.state == Error {
+			mg.setState(a, Stopping, "")
+		}
+	case a.state == Stopped || a.state == Error:
 		mg.setState(a, Starting, "") // show progress at once; the worker takes over
 	}
 	kick(a)
@@ -210,7 +250,11 @@ func (mg *Manager) Stop(id string) error {
 	return nil
 }
 
-func (mg *Manager) Restart(id string) error {
+// Restart stops and starts an app in the mode it last ran in.
+func (mg *Manager) Restart(id string) error { return mg.RestartMode(id, "") }
+
+// RestartMode stops and starts an app; mode "" keeps the current mode.
+func (mg *Manager) RestartMode(id string, mode Mode) error {
 	mg.mu.Lock()
 	defer mg.mu.Unlock()
 	a, err := mg.lookup(id)
@@ -220,7 +264,13 @@ func (mg *Manager) Restart(id string) error {
 	if a.removed {
 		return fmt.Errorf("app %q was removed from the apps folder", id)
 	}
-	a.target, a.restart = Running, true
+	if mode == "" {
+		mode = a.mode
+	}
+	if mode == ModeDev && !mg.DevAvailable(a.m) {
+		return ErrNoDevMode
+	}
+	a.target, a.restart, a.wantMode = Running, true, mode
 	if a.cancel != nil {
 		a.cancel()
 	}
@@ -290,18 +340,24 @@ func (mg *Manager) doStart(a *app) {
 	in := runtime.Default(a.m)
 	adopt := a.adopt
 	a.adopt = false
+	a.mode = a.wantMode
+	drv := mg.driver(a.mode)
+	dev := a.mode == ModeDev
 	mg.setState(a, Starting, "")
 	mg.mu.Unlock()
 	defer cancel()
 
 	var err error
 	if !adopt {
-		err = mg.opts.Driver.Start(ctx, in, runtime.StartOptions{})
+		err = drv.Start(ctx, in, runtime.StartOptions{})
 	}
 	var addr string
 	if err == nil {
-		hc := HealthCheck{Driver: mg.opts.Driver, Host: mg.opts.AppHost(in.App.ID),
+		hc := HealthCheck{Driver: drv, Host: mg.opts.AppHost(in.App.ID),
 			Client: mg.opts.HealthClient, Interval: mg.opts.HealthInterval}
+		if dev {
+			hc.MinTimeout = devMinStartTimeout
+		}
 		addr, err = hc.Wait(ctx, in)
 	}
 
@@ -323,10 +379,11 @@ func (mg *Manager) doStart(a *app) {
 func (mg *Manager) doStop(a *app) {
 	mg.mu.Lock()
 	in := runtime.Default(a.m)
+	drv := mg.driver(a.mode)
 	mg.setState(a, Stopping, "")
 	mg.mu.Unlock()
 
-	err := mg.opts.Driver.Stop(mg.ctx, in, runtime.StopOptions{})
+	err := drv.Stop(mg.ctx, in, runtime.StopOptions{})
 
 	mg.mu.Lock()
 	defer mg.mu.Unlock()
@@ -338,12 +395,47 @@ func (mg *Manager) doStop(a *app) {
 	mg.setState(a, Stopped, "")
 }
 
+// driver returns the runtime for a mode.
+func (mg *Manager) driver(m Mode) runtime.Driver {
+	if m == ModeDev && mg.opts.DevDriver != nil {
+		return mg.opts.DevDriver
+	}
+	return mg.opts.Driver
+}
+
+// Logs streams the logs of an app's current (or last) instance.
+func (mg *Manager) Logs(ctx context.Context, id string, tail int, follow bool) (<-chan runtime.LogLine, error) {
+	mg.mu.Lock()
+	a, err := mg.lookup(id)
+	var drv runtime.Driver
+	if err == nil {
+		drv = mg.driver(a.mode)
+	}
+	mg.mu.Unlock()
+	if err != nil {
+		return nil, err
+	}
+	return drv.Logs(ctx, runtime.ProjectName(id), tail, follow)
+}
+
 // Run adopts already-running apps and follows runtime events until ctx ends.
 func (mg *Manager) Run(ctx context.Context) {
+	if mg.opts.DevDriver != nil {
+		go mg.follow(ctx, ModeDev, mg.opts.DevDriver, false)
+	}
+	mg.follow(ctx, ModeRun, mg.opts.Driver, true)
+}
+
+// follow consumes one driver's events, reconnecting on errors. With
+// reconcile, it first re-syncs states with what the driver runs (startup,
+// and after missed events).
+func (mg *Manager) follow(ctx context.Context, mode Mode, drv runtime.Driver, reconcile bool) {
 	for {
-		mg.reconcile(ctx)
+		if reconcile {
+			mg.reconcile(ctx)
+		}
 		cctx, cancel := context.WithCancel(ctx)
-		evs, errs := mg.opts.Driver.Events(cctx)
+		evs, errs := drv.Events(cctx)
 	loop:
 		for {
 			select {
@@ -354,7 +446,7 @@ func (mg *Manager) Run(ctx context.Context) {
 				if !ok {
 					break loop
 				}
-				mg.onEvent(ev)
+				mg.onEvent(mode, ev)
 			case err := <-errs:
 				mg.opts.Log.Warn("runtime events disconnected; retrying", "error", err)
 				break loop
@@ -388,24 +480,35 @@ func (mg *Manager) reconcile(ctx context.Context) {
 	for id, a := range mg.apps {
 		switch {
 		case up[id] && a.state == Stopped && a.target != Stopped:
-			a.adopt, a.target = true, Running
+			a.adopt, a.target, a.mode, a.wantMode = true, Running, ModeRun, ModeRun
 			kick(a)
-		case !up[id] && a.state == Running:
+		case !up[id] && a.state == Running && a.mode == ModeRun:
 			a.target, a.crashed = "", true
 			mg.setState(a, Error, "stopped outside the hub")
 		}
 	}
 }
 
-func (mg *Manager) onEvent(ev runtime.Event) {
+func (mg *Manager) onEvent(mode Mode, ev runtime.Event) {
 	if ev.Project != runtime.ProjectName(ev.AppID) {
 		return // throwaway instance, e.g. `hub validate`
 	}
 	mg.mu.Lock()
 	defer mg.mu.Unlock()
 	a, ok := mg.apps[ev.AppID]
-	if !ok || ev.Service != a.m.Runtime.Service {
+	if !ok {
 		return
+	}
+	if mode == ModeDev {
+		// A dev process without watch patterns exiting breaks the app.
+		if a.mode == ModeDev && a.state == Running && ev.Kind == runtime.EventDied {
+			a.target = ""
+			mg.setState(a, Error, fmt.Sprintf("dev process %q exited (code %s)", ev.Service, ev.ExitCode))
+		}
+		return
+	}
+	if ev.Service != a.m.Runtime.Service || a.mode != ModeRun {
+		return // not the routed container, or the app runs in dev mode
 	}
 	switch ev.Kind {
 	case runtime.EventDied:

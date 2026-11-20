@@ -126,6 +126,8 @@ States: `stopped → starting → running → stopping → stopped`, plus `error
 
 Live status reaches the shell over SSE.
 
+**Modes.** *Run* uses the containers (above). *Dev* (optional `dev:` block in the manifest) makes the core run the app's processes on the host with live reload, and the gateway routes to them. UI edits show up instantly, Go edits in about a second. Dev processes stop with the core. See [ADR-0008](adr/0008-dev-mode-host-processes.md).
+
 Each app has a worker that drives its actual state toward the requested one, so overlapping power presses resolve in order (off during a start cancels the health wait, then runs `down`). Failed starts and crashes stay in `error` (containers kept for logs) until the next power press. Shutting the core down leaves apps running; the next start re-adopts them.
 
 ## 6. Core API (shell-facing)

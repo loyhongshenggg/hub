@@ -106,8 +106,14 @@ func TestServeAndShutdown(t *testing.T) {
 func TestEnv(t *testing.T) {
 	t.Setenv("HUB_APP_ID", "notes")
 	t.Setenv("PORT", "")
+	t.Setenv("DATA_DIR", "")
+	t.Setenv("HUB_DATA_DIR", "/tmp/dev-data")
 	c := LoadConfig()
-	if c.AppID != "notes" || c.Port != "8080" {
+	if c.AppID != "notes" || c.Port != "8080" || c.DataDir != "/tmp/dev-data" {
 		t.Errorf("config = %+v", c)
+	}
+	t.Setenv("DATA_DIR", "/data2")
+	if c := LoadConfig(); c.DataDir != "/data2" {
+		t.Errorf("DATA_DIR should win: %+v", c)
 	}
 }

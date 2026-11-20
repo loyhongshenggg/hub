@@ -5,7 +5,13 @@
   "description": "hub app manifest, version 1 (apps/<id>/app.manifest.yaml).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["manifestVersion", "id", "name", "runtime", "health"],
+  "required": [
+    "manifestVersion",
+    "id",
+    "name",
+    "runtime",
+    "health"
+  ],
   "properties": {
     "manifestVersion": {
       "description": "Contract version. Breaking changes bump this; old versions keep working.",
@@ -37,12 +43,18 @@
       "description": "How the core runs the app.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["driver", "service", "port"],
+      "required": [
+        "driver",
+        "service",
+        "port"
+      ],
       "properties": {
         "driver": {
           "description": "Runtime driver.",
           "type": "string",
-          "enum": ["docker"]
+          "enum": [
+            "docker"
+          ]
         },
         "compose": {
           "description": "Compose file, relative to the manifest.",
@@ -67,7 +79,9 @@
       "description": "Readiness check.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["path"],
+      "required": [
+        "path"
+      ],
       "properties": {
         "path": {
           "description": "GET path that returns 2xx when the app is ready.",
@@ -104,6 +118,61 @@
       "description": "Start the app when the core starts.",
       "type": "boolean",
       "default": false
+    },
+    "dev": {
+      "description": "Optional dev mode: the core runs these processes on the host (live reload) instead of the containers, and routes the app's URL to one of them.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "processes"
+      ],
+      "properties": {
+        "route": {
+          "description": "Name of the process the gateway routes to (it serves the UI and health path). Default: the first process.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "processes": {
+          "description": "Processes to run. Each gets its own free port in $PORT; every process also sees $HUB_PORT_<NAME> for all of them.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "command"
+            ],
+            "properties": {
+              "name": {
+                "description": "Short name, e.g. api or web.",
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$",
+                "maxLength": 20
+              },
+              "dir": {
+                "description": "Working directory, relative to the manifest. Default: the app folder.",
+                "type": "string",
+                "minLength": 1
+              },
+              "command": {
+                "description": "Shell command (run with /bin/sh -c).",
+                "type": "string",
+                "minLength": 1
+              },
+              "watch": {
+                "description": "File name patterns (e.g. *.go, go.mod); the core restarts the process when a matching file under dir changes.",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

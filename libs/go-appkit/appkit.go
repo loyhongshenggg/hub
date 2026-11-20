@@ -30,6 +30,9 @@ type Config struct {
 	AppURL  string // HUB_APP_URL, browser URL of this app
 	CoreURL string // HUB_CORE_URL, browser URL of the hub shell
 	Port    string // PORT, default 8080 — must match runtime.port in the manifest
+	// DataDir holds persistent files: DATA_DIR, else HUB_DATA_DIR (set by
+	// the core in dev mode), else /data (the volume in the app's image).
+	DataDir string
 }
 
 // LoadConfig reads Config from the environment.
@@ -39,6 +42,7 @@ func LoadConfig() Config {
 		AppURL:  os.Getenv("HUB_APP_URL"),
 		CoreURL: os.Getenv("HUB_CORE_URL"),
 		Port:    Env("PORT", "8080"),
+		DataDir: Env("DATA_DIR", Env("HUB_DATA_DIR", "/data")),
 	}
 }
 

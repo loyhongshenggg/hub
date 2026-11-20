@@ -1,5 +1,5 @@
 import { cn } from '@hub/ui-kit';
-import type { AppStatus } from '../api/types';
+import type { AppInfo, AppStatus } from '../api/types';
 
 export const statusLabel: Record<AppStatus, string> = {
   running: 'Running',
@@ -16,6 +16,19 @@ const dot: Record<AppStatus, string> = {
   error: 'bg-destructive',
   stopped: 'bg-muted-foreground/35',
 };
+
+/** Small "DEV" tag shown while an app runs in dev mode. */
+export function DevTag({ app }: { app: Pick<AppInfo, 'mode' | 'status'> }) {
+  if (app.mode !== 'dev' || app.status === 'stopped') return null;
+  return (
+    <span
+      title="Dev mode: host processes with live reload"
+      className="rounded bg-warning/20 px-1 py-px font-mono text-[10px] font-semibold leading-none text-foreground"
+    >
+      DEV
+    </span>
+  );
+}
 
 export function StatusDot({
   status,

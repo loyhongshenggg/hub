@@ -1,5 +1,5 @@
 import { Button } from '@hub/ui-kit';
-import { Loader2, Power, ScrollText } from 'lucide-react';
+import { Code2, Loader2, Power, ScrollText } from 'lucide-react';
 import { useState } from 'react';
 import { useAppAction, useApps } from '../api/apps';
 import type { AppInfo } from '../api/types';
@@ -82,12 +82,26 @@ function OffPanel({ app }: { app: AppInfo }) {
               {app.status === 'starting' ? 'Starting…' : 'Stopping…'}
             </Button>
           ) : (
-            <Button
-              disabled={app.removed}
-              onClick={() => action.mutate({ id: app.id, action: 'start' })}
-            >
-              <Power /> Power on
-            </Button>
+            <>
+              <Button
+                disabled={app.removed}
+                onClick={() => action.mutate({ id: app.id, action: 'start' })}
+              >
+                <Power /> Power on
+              </Button>
+              {app.devAvailable && (
+                <Button
+                  variant="outline"
+                  disabled={app.removed}
+                  title="Run on the host with live reload"
+                  onClick={() =>
+                    action.mutate({ id: app.id, action: 'start', mode: 'dev' })
+                  }
+                >
+                  <Code2 /> Dev mode
+                </Button>
+              )}
+            </>
           )}
           <Button variant="outline" onClick={() => showLogs(app.id)}>
             <ScrollText /> Logs

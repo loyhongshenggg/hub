@@ -1,4 +1,10 @@
-import type { AppAction, AppInfo, AppPrefsPatch, AppsResponse } from './types';
+import type {
+  AppAction,
+  AppInfo,
+  AppMode,
+  AppPrefsPatch,
+  AppsResponse,
+} from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -34,8 +40,11 @@ async function request<T>(
 
 export const api = {
   apps: () => request<AppsResponse>('GET', '/api/apps'),
-  action: (id: string, action: AppAction) =>
-    request<AppInfo>('POST', `/api/apps/${id}/${action}`),
+  action: (id: string, action: AppAction, mode?: AppMode) =>
+    request<AppInfo>(
+      'POST',
+      `/api/apps/${id}/${action}${mode ? `?mode=${mode}` : ''}`,
+    ),
   patch: (id: string, prefs: AppPrefsPatch) =>
     request<AppInfo>('PATCH', `/api/apps/${id}`, prefs),
   /** Shell UI state; null when never saved. */

@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"text/tabwriter"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"hub.localhost/platform/core/internal/registry"
 	"hub.localhost/platform/core/internal/runtime"
 	"hub.localhost/platform/core/internal/runtime/docker"
+	"hub.localhost/platform/core/internal/runtime/process"
 	"hub.localhost/platform/core/internal/server"
 	"hub.localhost/platform/core/internal/shellui"
 	"hub.localhost/platform/core/internal/store"
@@ -38,7 +40,8 @@ const usage = `hub — local multi-app platform
 Usage:
   hub serve [--addr 127.0.0.1:7000] [--root DIR] [--data DIR] [--shell-dev URL]
   hub apps [ls]
-  hub apps start|stop|restart <id> [--no-wait]
+  hub apps start|restart <id> [--dev] [--no-wait]
+  hub apps stop <id> [--no-wait]
   hub apps logs <id> [-f] [--tail N]
   hub validate <id> [--keep] [--root DIR] [--data DIR]
   hub version
@@ -161,8 +164,15 @@ func serve(ctx context.Context, args []string) error {
 		return err
 	}
 	defer st.Close()
+	devDrv := process.New(process.Options{
+		StateDir: filepath.Join(cfg.DataDir, "dev"), AppURL: cfg.AppURL, CoreURL: cfg.ShellOrigin(), Log: log,
+	})
+	if err := devDrv.Prepare(ctx); err != nil {
+		return err
+	}
+	defer devDrv.Close() // dev processes don't outlive the core
 
-	mg := lifecycle.New(ctx, lifecycle.Options{Driver: drv, Log: log, AppHost: cfg.AppHost})
+	mg := lifecycle.New(ctx, lifecycle.Options{Driver: drv, DevDriver: devDrv, Log: log, AppHost: cfg.AppHost})
 	res, err := registry.Scan(cfg.AppsDir())
 	if err != nil {
 		return err
@@ -214,7 +224,7 @@ func serve(ctx context.Context, args []string) error {
 		return err
 	case <-ctx.Done():
 	}
-	log.Info("shutting down (apps keep running and are re-adopted on next start)")
+	log.Info("shutting down (Run-mode apps keep running and are re-adopted on next start; dev processes stop)")
 	sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	return hs.Shutdown(sctx)
@@ -255,6 +265,7 @@ func apps(ctx context.Context, args []string) error {
 	case "start", "stop", "restart":
 		fs := flag.NewFlagSet("apps "+cmd, flag.ContinueOnError)
 		noWait := fs.Bool("no-wait", false, "return once the request is accepted")
+		dev := fs.Bool("dev", false, "dev mode: run the app's dev processes on the host (live reload)")
 		pos, err := flags(fs, args[1:])
 		if err != nil {
 			return err
@@ -262,7 +273,11 @@ func apps(ctx context.Context, args []string) error {
 		if len(pos) != 1 {
 			return fmt.Errorf("usage: hub apps %s <id>", cmd)
 		}
-		return appsAction(ctx, c, pos[0], cmd, !*noWait)
+		mode := ""
+		if *dev {
+			mode = "dev"
+		}
+		return appsAction(ctx, c, pos[0], cmd, mode, !*noWait)
 	case "logs":
 		fs := flag.NewFlagSet("apps logs", flag.ContinueOnError)
 		follow := fs.Bool("f", false, "follow")
@@ -294,6 +309,9 @@ func appsLs(ctx context.Context, c *client.Client) error {
 	fmt.Fprintln(tw, "ID\tSTATUS\tURL\tNAME")
 	for _, a := range r.Apps {
 		status := a.Status
+		if a.Mode == "dev" && a.Status != "stopped" {
+			status += " [dev]"
+		}
 		if a.Error != "" {
 			status += " (" + firstLine(a.Error) + ")"
 		}
@@ -314,8 +332,8 @@ func firstLine(s string) string {
 	return s
 }
 
-func appsAction(ctx context.Context, c *client.Client, id, action string, wait bool) error {
-	info, err := c.Action(ctx, id, action)
+func appsAction(ctx context.Context, c *client.Client, id, action, mode string, wait bool) error {
+	info, err := c.Action(ctx, id, action, mode)
 	if err != nil {
 		return err
 	}

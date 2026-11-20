@@ -94,6 +94,12 @@ func TestParseInvalid(t *testing.T) {
 		{"compose absolute", replace("service: web", "service: web, compose: /etc/x.yaml"), "inside the app folder"},
 		{"icon escapes", minimal + "icon: ../../secret.svg\n", "inside the app folder"},
 		{"icon type", minimal + "icon: ./icon.gif\n", "icon: "},
+		{"dev no processes", minimal + "dev: {processes: []}\n", "dev.processes"},
+		{"dev dup names", minimal + "dev: {processes: [{name: a, command: x}, {name: a, command: y}]}\n", "duplicate name"},
+		{"dev bad route", minimal + "dev: {route: web, processes: [{name: api, command: x}]}\n", "no process named"},
+		{"dev dir escapes", minimal + "dev: {processes: [{name: a, dir: ../x, command: x}]}\n", "inside the app folder"},
+		{"dev bad pattern", minimal + "dev: {processes: [{name: a, command: x, watch: ['[']}]}\n", "bad pattern"},
+		{"dev no command", minimal + "dev: {processes: [{name: a}]}\n", "command"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -113,6 +119,32 @@ func TestParseReportsAllProblems(t *testing.T) {
 	var merr *Error
 	if !errors.As(err, &merr) || len(merr.Problems) < 3 {
 		t.Fatalf("want several problems, got %v", err)
+	}
+}
+
+func TestParseDev(t *testing.T) {
+	m, err := Parse([]byte(minimal + `dev:
+  route: web
+  processes:
+    - {name: api, dir: api, command: go run ., watch: ["*.go", go.mod]}
+    - {name: web, dir: web, command: pnpm exec vite}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Dev == nil || len(m.Dev.Processes) != 2 || m.Dev.RouteProcess().Name != "web" || m.Dev.Processes[0].Watch[1] != "go.mod" {
+		t.Fatalf("dev = %+v", m.Dev)
+	}
+	m.Dir = "/apps/x"
+	if got := m.DevDir(m.Dev.Processes[0]); got != "/apps/x/api" {
+		t.Errorf("DevDir = %s", got)
+	}
+	m.Dev.Route = ""
+	if m.Dev.RouteProcess().Name != "api" {
+		t.Error("default route should be the first process")
+	}
+	if m2, _ := Parse([]byte(minimal)); m2.Dev != nil {
+		t.Error("dev should be nil when absent")
 	}
 }
 
@@ -157,10 +189,14 @@ func TestStructMatchesSchema(t *testing.T) {
 
 type schemaNode struct {
 	Properties map[string]schemaNode `json:"properties"`
+	Items      *schemaNode           `json:"items"`
 }
 
 func compare(t *testing.T, at string, s schemaNode, typ reflect.Type) {
 	t.Helper()
+	for typ.Kind() == reflect.Pointer || typ.Kind() == reflect.Slice {
+		typ = typ.Elem()
+	}
 	fields := map[string]reflect.Type{}
 	for f := range typ.Fields() {
 		name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
@@ -182,8 +218,11 @@ func compare(t *testing.T, at string, s schemaNode, typ reflect.Type) {
 		return
 	}
 	for k, sub := range s.Properties {
-		if len(sub.Properties) > 0 {
+		switch {
+		case len(sub.Properties) > 0:
 			compare(t, k, sub, fields[k])
+		case sub.Items != nil && len(sub.Items.Properties) > 0:
+			compare(t, k+"[]", *sub.Items, fields[k])
 		}
 	}
 }

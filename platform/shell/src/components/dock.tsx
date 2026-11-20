@@ -69,7 +69,7 @@ function DockApp({ app }: { app: AppInfo }) {
   const badge = useBridgeState((s) => s.badges[app.id]);
   return (
     <DockButton
-      label={`${app.name} — ${statusLabel[app.status]}`}
+      label={`${app.name} — ${statusLabel[app.status]}${app.mode === 'dev' && app.status !== 'stopped' ? ' (dev mode)' : ''}`}
       active={active === app.id}
       onClick={() => openApp(app.id)}
     >

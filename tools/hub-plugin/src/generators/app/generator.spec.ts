@@ -54,6 +54,8 @@ describe('app generator', () => {
     expect(manifest).toMatch(/description: ["']Track time["']/);
     expect(manifest).toContain('service: web');
     expect(manifest).toContain('path: /healthz');
+    expect(manifest).toContain('dev:');
+    expect(manifest).toContain('command: go run .');
 
     expect(tree.read(`${root}/api/go.mod`, 'utf-8')).toContain(
       'module hub.localhost/apps/time-tracker/api\n\ngo 1.27\n',
@@ -98,6 +100,7 @@ describe('app generator', () => {
       'image: "louislam/uptime-kuma:2"',
     );
     expect(tree.exists('apps/uptime/api')).toBe(false);
+    expect(manifest).not.toContain('dev:');
     expect(tree.read('go.work', 'utf-8')).not.toContain('uptime');
   });
 

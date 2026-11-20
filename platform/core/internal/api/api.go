@@ -21,20 +21,22 @@ import (
 
 // AppInfo is one app as the shell sees it.
 type AppInfo struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Icon        string    `json:"icon,omitempty"` // URL path
-	URL         string    `json:"url"`            // app origin, e.g. http://notes.hub.localhost:7000
-	UIPath      string    `json:"uiPath"`
-	KeepAlive   bool      `json:"keepAlive"`
-	AutoStart   bool      `json:"autoStart"` // effective: user override, else manifest
-	Pinned      bool      `json:"pinned"`
-	Position    *int      `json:"position"`
-	Status      string    `json:"status"` // stopped|starting|running|stopping|error
-	Error       string    `json:"error,omitempty"`
-	Since       time.Time `json:"since"`
-	Removed     bool      `json:"removed,omitempty"`
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	Description  string    `json:"description"`
+	Icon         string    `json:"icon,omitempty"` // URL path
+	URL          string    `json:"url"`            // app origin, e.g. http://notes.hub.localhost:7000
+	UIPath       string    `json:"uiPath"`
+	KeepAlive    bool      `json:"keepAlive"`
+	AutoStart    bool      `json:"autoStart"` // effective: user override, else manifest
+	Pinned       bool      `json:"pinned"`
+	Position     *int      `json:"position"`
+	Status       string    `json:"status"` // stopped|starting|running|stopping|error
+	Mode         string    `json:"mode"`   // run|dev: of the current (or last) instance
+	DevAvailable bool      `json:"devAvailable"`
+	Error        string    `json:"error,omitempty"`
+	Since        time.Time `json:"since"`
+	Removed      bool      `json:"removed,omitempty"`
 }
 
 type AppsResponse struct {
@@ -96,7 +98,8 @@ func (a *API) info(s lifecycle.Snapshot, p store.Prefs) AppInfo {
 		ID: m.ID, Name: m.Name, Description: m.Description, Icon: icon, URL: a.AppURL(m.ID),
 		UIPath: m.UI.Path, KeepAlive: m.UI.KeepAlive, AutoStart: auto,
 		Pinned: p.Pinned, Position: p.Position,
-		Status: string(s.State), Error: s.Error, Since: s.Since, Removed: s.Removed,
+		Status: string(s.State), Mode: string(s.Mode), DevAvailable: a.Manager.DevAvailable(m),
+		Error: s.Error, Since: s.Since, Removed: s.Removed,
 	}
 }
 
@@ -134,14 +137,22 @@ func (a *API) getApp(w http.ResponseWriter, r *http.Request) { a.writeApp(w, r, 
 
 func (a *API) action(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	mode := lifecycle.Mode(r.URL.Query().Get("mode"))
+	if mode != "" && mode != lifecycle.ModeRun && mode != lifecycle.ModeDev {
+		writeError(w, 400, "mode must be run or dev")
+		return
+	}
 	var err error
 	switch r.PathValue("action") {
 	case "start":
-		err = a.Manager.Start(id)
+		if mode == "" {
+			mode = lifecycle.ModeRun
+		}
+		err = a.Manager.StartMode(id, mode)
 	case "stop":
 		err = a.Manager.Stop(id)
 	case "restart":
-		err = a.Manager.Restart(id)
+		err = a.Manager.RestartMode(id, mode)
 	default:
 		writeError(w, 404, "unknown action (start, stop, restart)")
 		return
@@ -149,6 +160,8 @@ func (a *API) action(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case errors.Is(err, lifecycle.ErrUnknownApp):
 		writeError(w, 404, err.Error())
+	case errors.Is(err, lifecycle.ErrNoDevMode):
+		writeError(w, 409, err.Error())
 	case err != nil:
 		writeError(w, 409, err.Error())
 	default:
@@ -213,7 +226,8 @@ func (a *API) icon(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, s.App.IconPath())
 }
 
-// logs streams container logs as SSE "log" events (data: runtime.LogLine).
+// logs streams the logs of the app's current instance (containers or dev
+// processes) as SSE "log" events (data: runtime.LogLine).
 // Query: tail (default 200, 0 = all), follow (default 1).
 func (a *API) logs(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
@@ -231,7 +245,7 @@ func (a *API) logs(w http.ResponseWriter, r *http.Request) {
 		tail = n
 	}
 	follow := r.URL.Query().Get("follow") != "0"
-	lines, err := a.Driver.Logs(r.Context(), runtime.ProjectName(id), tail, follow)
+	lines, err := a.Manager.Logs(r.Context(), id, tail, follow)
 	if err != nil {
 		writeError(w, 502, err.Error())
 		return

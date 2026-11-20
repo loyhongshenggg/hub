@@ -35,6 +35,8 @@ type Manifest struct {
 	Health          Health  `json:"health"`
 	UI              UI      `json:"ui"`
 	AutoStart       bool    `json:"autoStart"`
+	// Dev is optional: how to run the app on the host with live reload.
+	Dev *Dev `json:"dev,omitempty"`
 
 	// Dir is the absolute folder holding the manifest. Set by Load.
 	Dir string `json:"-"`
@@ -58,6 +60,31 @@ type Health struct {
 type UI struct {
 	Path      string `json:"path"`
 	KeepAlive bool   `json:"keepAlive"`
+}
+
+// Dev describes the app's dev mode: host processes instead of containers.
+type Dev struct {
+	// Route is the process the gateway routes to. Default: the first one.
+	Route     string       `json:"route,omitempty"`
+	Processes []DevProcess `json:"processes"`
+}
+
+// DevProcess is one host process of dev mode.
+type DevProcess struct {
+	Name    string   `json:"name"`
+	Dir     string   `json:"dir,omitempty"`
+	Command string   `json:"command"`
+	Watch   []string `json:"watch,omitempty"`
+}
+
+// RouteProcess returns the process the gateway routes to in dev mode.
+func (d *Dev) RouteProcess() DevProcess {
+	for _, p := range d.Processes {
+		if p.Name == d.Route {
+			return p
+		}
+	}
+	return d.Processes[0]
 }
 
 // Duration is a time.Duration written as a string such as "60s".
@@ -172,8 +199,36 @@ func (m *Manifest) checkPaths() error {
 	if m.Icon != "" && !filepath.IsLocal(m.Icon) {
 		return fmt.Errorf("icon: %q must be a relative path inside the app folder", m.Icon)
 	}
+	if m.Dev != nil {
+		return m.Dev.check()
+	}
 	return nil
 }
+
+func (d *Dev) check() error {
+	names := map[string]bool{}
+	for i, p := range d.Processes {
+		if names[p.Name] {
+			return fmt.Errorf("dev.processes[%d]: duplicate name %q", i, p.Name)
+		}
+		names[p.Name] = true
+		if p.Dir != "" && !filepath.IsLocal(p.Dir) {
+			return fmt.Errorf("dev.processes[%d].dir: %q must be a relative path inside the app folder", i, p.Dir)
+		}
+		for _, w := range p.Watch {
+			if _, err := filepath.Match(w, ""); err != nil {
+				return fmt.Errorf("dev.processes[%d].watch: bad pattern %q", i, w)
+			}
+		}
+	}
+	if d.Route != "" && !names[d.Route] {
+		return fmt.Errorf("dev.route: no process named %q", d.Route)
+	}
+	return nil
+}
+
+// DevDir is the absolute working directory of a dev process. Requires Dir.
+func (m *Manifest) DevDir(p DevProcess) string { return filepath.Join(m.Dir, p.Dir) }
 
 // ComposePath is the absolute path of the compose file. Requires Dir.
 func (m *Manifest) ComposePath() string { return filepath.Join(m.Dir, m.Runtime.Compose) }

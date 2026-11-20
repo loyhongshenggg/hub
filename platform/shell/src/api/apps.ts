@@ -7,7 +7,13 @@ import {
 import { useEffect, useState } from 'react';
 import { toast } from '../state/toasts';
 import { api } from './client';
-import type { AppAction, AppInfo, AppPrefsPatch, AppsResponse } from './types';
+import type {
+  AppAction,
+  AppMode,
+  AppInfo,
+  AppPrefsPatch,
+  AppsResponse,
+} from './types';
 
 export const appsKey = ['apps'] as const;
 
@@ -61,8 +67,15 @@ function updateApp(qc: QueryClient, info: AppInfo) {
 export function useAppAction() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, action }: { id: string; action: AppAction }) =>
-      api.action(id, action),
+    mutationFn: ({
+      id,
+      action,
+      mode,
+    }: {
+      id: string;
+      action: AppAction;
+      mode?: AppMode;
+    }) => api.action(id, action, mode),
     onSuccess: (info) => updateApp(qc, info),
     onError: (e) => toast(e.message),
   });

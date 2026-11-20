@@ -16,6 +16,8 @@ export function app(id: string, over: Partial<AppInfo> = {}): AppInfo {
     pinned: false,
     position: null,
     status: 'stopped',
+    mode: 'run',
+    devAvailable: false,
     since: '2026-11-20T00:00:00Z',
     ...over,
   };

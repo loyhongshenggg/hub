@@ -14,6 +14,7 @@ import {
 } from '@hub/ui-kit';
 import {
   Check,
+  Code2,
   ExternalLink,
   MoreHorizontal,
   Pin,
@@ -27,7 +28,9 @@ import { useTabs } from '../state/tabs';
 import { useUI } from '../state/ui';
 import { AppIcon } from './app-icon';
 import { PowerSwitch } from './power-switch';
-import { statusLabel, StatusDot } from './status';
+import { DevTag, statusLabel, StatusDot } from './status';
+
+const devActive = (a: AppInfo) => a.mode === 'dev' && a.status !== 'stopped';
 
 export function AppCard({ app }: { app: AppInfo }) {
   const openApp = useTabs((s) => s.openApp);
@@ -44,6 +47,7 @@ export function AppCard({ app }: { app: AppInfo }) {
             <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
               <StatusDot status={app.status} />
               {statusLabel[app.status]}
+              <DevTag app={app} />
               {app.removed && ' · removed'}
             </div>
           </div>
@@ -116,6 +120,25 @@ export function AppCard({ app }: { app: AppInfo }) {
             >
               <RotateCw /> Restart
             </DropdownMenuItem>
+            {app.devAvailable && (
+              <DropdownMenuItem
+                disabled={app.status === 'stopping' || !!app.removed}
+                onSelect={() =>
+                  action.mutate({
+                    id: app.id,
+                    action: 'start',
+                    mode: devActive(app) ? 'run' : 'dev',
+                  })
+                }
+              >
+                <Code2 />
+                {devActive(app)
+                  ? 'Switch to run mode (Docker)'
+                  : app.status === 'stopped'
+                    ? 'Start in dev mode'
+                    : 'Switch to dev mode'}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               disabled={app.status !== 'running'}
               onSelect={() =>

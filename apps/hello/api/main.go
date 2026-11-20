@@ -20,7 +20,7 @@ var uiFS embed.FS
 
 func main() {
 	app := appkit.New()
-	visits, err := newCounter(appkit.Env("DATA_DIR", "/data"))
+	visits, err := newCounter(app.Config.DataDir)
 	if err != nil {
 		app.Log.Error("data dir", "error", err)
 		os.Exit(1)

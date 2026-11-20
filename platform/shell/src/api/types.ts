@@ -21,6 +21,10 @@ export interface AppInfo {
   pinned: boolean;
   position: number | null;
   status: AppStatus;
+  /** How the current (or last) instance runs: containers, or dev processes with live reload. */
+  mode: AppMode;
+  /** The manifest has a dev: block. */
+  devAvailable: boolean;
   error?: string;
   since: string;
   removed?: boolean;
@@ -44,6 +48,8 @@ export interface LogLine {
 }
 
 export type AppAction = 'start' | 'stop' | 'restart';
+
+export type AppMode = 'run' | 'dev';
 
 export interface AppPrefsPatch {
   pinned?: boolean;

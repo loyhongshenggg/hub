@@ -69,10 +69,14 @@ func (c *Client) App(ctx context.Context, id string) (api.AppInfo, error) {
 	return r, c.do(ctx, http.MethodGet, "/api/apps/"+id, &r)
 }
 
-// Action runs start, stop or restart.
-func (c *Client) Action(ctx context.Context, id, action string) (api.AppInfo, error) {
+// Action runs start, stop or restart; mode ("run", "dev" or "") picks how.
+func (c *Client) Action(ctx context.Context, id, action, mode string) (api.AppInfo, error) {
 	var r api.AppInfo
-	return r, c.do(ctx, http.MethodPost, "/api/apps/"+id+"/"+action, &r)
+	path := "/api/apps/" + id + "/" + action
+	if mode != "" {
+		path += "?mode=" + mode
+	}
+	return r, c.do(ctx, http.MethodPost, path, &r)
 }
 
 // Logs streams log lines to fn until the stream ends or ctx is cancelled.

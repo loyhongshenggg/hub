@@ -51,7 +51,13 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
   - [x] tools/hub-plugin — `nx g @hub/plugin:app <id>` (go-react + image templates)
   - [x] .claude/skills/hub-app — create / plug in an app
   - [x] docs/adding-an-app.md
-- [ ] Phase 2 — dev ergonomics
+- [ ] Phase 2 — dev ergonomics (driven by building `apps/radar`; design approved 2026-11-20)
+  - [x] Dev mode: manifest `dev:` block, core process driver, shell + CLI ([ADR-0008](docs/adr/0008-dev-mode-host-processes.md))
+  - [ ] radar: news fetching + UI
+  - [ ] radar: mentors, learning path, badge/notify
+  - [ ] Rebuild button
+  - [ ] CPU/RAM per app
+  - [ ] Start on Windows login (ADR-0009)
 - [ ] Phase 3 — platform services
 
 <!-- nx configuration start-->

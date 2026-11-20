@@ -19,9 +19,9 @@ var uiFS embed.FS
 
 func main() {
 	app := appkit.New()
-	// Persistent files go here (a Docker volume, kept across power off/on).
-	dataDir := appkit.Env("DATA_DIR", "/data")
-	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+	// Persistent files go in app.Config.DataDir: a Docker volume in Run mode
+	// (kept across power off/on), a host folder in Dev mode.
+	if err := os.MkdirAll(app.Config.DataDir, 0o755); err != nil {
 		app.Log.Error("data dir", "error", err)
 		os.Exit(1)
 	}

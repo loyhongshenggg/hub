@@ -1,5 +1,6 @@
-import { screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTabs } from '../state/tabs';
 import { app, renderWithApps } from '../test/fixtures';
 import { TabPanels } from './tab-panels';
@@ -35,5 +36,29 @@ describe('TabPanels', () => {
       (f) => !f.hidden,
     );
     expect(visible.map((f) => f.title)).toEqual(['Drop']);
+  });
+
+  describe('dev mode', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('offers Dev mode only when the manifest has a dev block', async () => {
+      const fetchMock = vi.fn(async () =>
+        Response.json(app('off', { status: 'starting', mode: 'dev' })),
+      );
+      vi.stubGlobal('fetch', fetchMock);
+      renderWithApps(<TabPanels />, [app('off', { devAvailable: true })]);
+      await userEvent.click(screen.getByRole('button', { name: /dev mode/i }));
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(
+          '/api/apps/off/start?mode=dev',
+          expect.objectContaining({ method: 'POST' }),
+        ),
+      );
+    });
+
+    it('hides Dev mode without a dev block', () => {
+      renderWithApps(<TabPanels />, [app('off')]);
+      expect(screen.queryByRole('button', { name: /dev mode/i })).toBeNull();
+    });
   });
 });

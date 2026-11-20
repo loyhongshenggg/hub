@@ -18,6 +18,8 @@ type HealthCheck struct {
 	Host     string
 	Client   *http.Client  // default: 2s timeout, no redirects
 	Interval time.Duration // default 500ms
+	// MinTimeout raises the manifest's startTimeout (dev servers compile first).
+	MinTimeout time.Duration
 }
 
 // Wait returns the instance's address once healthy. It fails fast if the
@@ -34,7 +36,7 @@ func (h HealthCheck) Wait(ctx context.Context, in runtime.Instance) (string, err
 	if interval == 0 {
 		interval = 500 * time.Millisecond
 	}
-	timeout := in.App.Health.StartTimeout.Duration
+	timeout := max(in.App.Health.StartTimeout.Duration, h.MinTimeout)
 	deadline := time.Now().Add(timeout)
 	svc := in.App.Runtime.Service
 	var last error

@@ -39,14 +39,13 @@ apps/time-tracker/
 └─ web/                React + Vite (@hub/ui-kit, @hub/app-sdk): start in src/app.tsx
 ```
 
-Day-to-day UI work without Docker:
+Day-to-day work: turn the app on in **Dev mode** (app menu → _Start in dev mode_, or `hub apps start <id> --dev`). The core runs the API and the Vite dev server on your machine and routes the app's URL to them, so you work inside the shell with:
 
-```bash
-pnpm nx serve time-tracker-api        # API on :8080
-pnpm nx dev @hub/time-tracker-web     # Vite with hot reload; proxies /api to the API
-```
+- UI edits: instant (hot reload).
+- Go edits: the API restarts in about a second. A compile error waits for your fix and is shown in **Logs**.
+- Data: a separate dev folder (`~/.local/share/hub/dev/<id>/data`), never the Run-mode volume.
 
-The app inside the hub only changes when it's rebuilt. Use **Restart** in the app's menu after `docker compose -p hub-<id> -f apps/<id>/compose.yaml build` (or `pnpm nx run <id>:docker-build`).
+Run mode (the power switch) uses the Docker image; rebuild it after changes with `pnpm nx run <id>:docker-build` and **Restart**.
 
 ## Existing Docker image
 
@@ -92,22 +91,24 @@ The gateway removes `X-Frame-Options` and CSP `frame-ancestors` from responses s
 
 Schema: [`libs/manifest/schema/v1.schema.json`](../libs/manifest/schema/v1.schema.json). VS Code autocompletes it with the YAML extension.
 
-| Field                 | Required | Default          | Notes                                                                  |
-| --------------------- | -------- | ---------------- | ---------------------------------------------------------------------- |
-| `manifestVersion`     | yes      |                  | `1`                                                                    |
-| `id`                  | yes      |                  | `[a-z][a-z0-9]*(-[a-z0-9]+)*`, ≤ 40 chars, equals the folder name      |
-| `name`                | yes      |                  | Dock and tab label, ≤ 40 chars                                         |
-| `description`         |          | `""`             | Home grid, ≤ 200 chars                                                 |
-| `icon`                |          | letter tile      | `.svg` or `.png`, relative to the manifest                             |
-| `runtime.driver`      | yes      |                  | `docker`                                                               |
-| `runtime.compose`     |          | `./compose.yaml` | Relative, inside the app folder                                        |
-| `runtime.service`     | yes      |                  | Compose service the gateway routes to                                  |
-| `runtime.port`        | yes      |                  | Port inside that container                                             |
-| `health.path`         | yes      |                  | Must start with `/`                                                    |
-| `health.startTimeout` |          | `60s`            | Time allowed for the first 2xx after containers start (`ms`, `s`, `m`) |
-| `ui.path`             |          | `/`              | Page opened in the tab                                                 |
-| `ui.keepAlive`        |          | `true`           | Keep the iframe loaded when switching tabs                             |
-| `autoStart`           |          | `false`          | Start with the hub (users can override per app in the UI)              |
+| Field                 | Required     | Default          | Notes                                                                                                                                                                                   |
+| --------------------- | ------------ | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `manifestVersion`     | yes          |                  | `1`                                                                                                                                                                                     |
+| `id`                  | yes          |                  | `[a-z][a-z0-9]*(-[a-z0-9]+)*`, ≤ 40 chars, equals the folder name                                                                                                                       |
+| `name`                | yes          |                  | Dock and tab label, ≤ 40 chars                                                                                                                                                          |
+| `description`         |              | `""`             | Home grid, ≤ 200 chars                                                                                                                                                                  |
+| `icon`                |              | letter tile      | `.svg` or `.png`, relative to the manifest                                                                                                                                              |
+| `runtime.driver`      | yes          |                  | `docker`                                                                                                                                                                                |
+| `runtime.compose`     |              | `./compose.yaml` | Relative, inside the app folder                                                                                                                                                         |
+| `runtime.service`     | yes          |                  | Compose service the gateway routes to                                                                                                                                                   |
+| `runtime.port`        | yes          |                  | Port inside that container                                                                                                                                                              |
+| `health.path`         | yes          |                  | Must start with `/`                                                                                                                                                                     |
+| `health.startTimeout` |              | `60s`            | Time allowed for the first 2xx after containers start (`ms`, `s`, `m`)                                                                                                                  |
+| `ui.path`             |              | `/`              | Page opened in the tab                                                                                                                                                                  |
+| `ui.keepAlive`        |              | `true`           | Keep the iframe loaded when switching tabs                                                                                                                                              |
+| `autoStart`           |              | `false`          | Start with the hub (users can override per app in the UI)                                                                                                                               |
+| `dev.route`           |              | first process    | Process the gateway routes to in Dev mode                                                                                                                                               |
+| `dev.processes[]`     | for Dev mode |                  | `name`, `command` (`/bin/sh -c`), optional `dir` and `watch` (file patterns that restart it). Each gets `$PORT`; siblings' ports are in `$HUB_PORT_<NAME>`; data dir in `$HUB_DATA_DIR` |
 
 Invalid manifests appear on the Home page with the exact problem; `hub validate <id>` prints the same.
 
