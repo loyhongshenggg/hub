@@ -1,0 +1,61 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "analytics": false,
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "production": [
+      "default",
+      "!{projectRoot}/.eslintrc.json",
+      "!{projectRoot}/eslint.config.mjs"
+    ],
+    "sharedGlobals": [],
+    "goSource": [
+      "{projectRoot}/go.mod",
+      "{projectRoot}/go.sum",
+      "{projectRoot}/**/*.go",
+      "{workspaceRoot}/go.work",
+      "{workspaceRoot}/go.work.sum"
+    ]
+  },
+  "plugins": [
+    {
+      "plugin": "@nx/js/typescript",
+      "options": {
+        "typecheck": {
+          "targetName": "typecheck"
+        },
+        "build": {
+          "targetName": "build",
+          "configName": "tsconfig.lib.json",
+          "buildDepsName": "build-deps",
+          "watchDepsName": "watch-deps"
+        }
+      }
+    },
+    {
+      "plugin": "@naxodev/gonx",
+      "options": {
+        "buildTargetName": "build",
+        "testTargetName": "test",
+        "runTargetName": "serve",
+        "lintTargetName": "lint",
+        "tidyTargetName": "tidy",
+        "generateTargetName": "generate"
+      }
+    },
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "lint"
+      }
+    }
+  ],
+  "targetDefaults": {
+    "@naxodev/gonx:lint": {
+      "options": {
+        "linter": "go",
+        "args": ["vet"]
+      }
+    }
+  }
+}

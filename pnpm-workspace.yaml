@@ -1,0 +1,13 @@
+packages:
+  - 'platform/*'
+  - 'apps/*'
+  - 'apps/*/web'
+  - 'libs/*'
+  - 'libs/*/ts'
+  - 'tools/*'
+
+autoInstallPeers: true
+allowBuilds:
+  nx: true
+  # gonx loads the prebuilt tree-sitter-go.wasm; the native addon is unused.
+  tree-sitter-go: false

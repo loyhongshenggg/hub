@@ -1,0 +1,62 @@
+{
+  "name": "@hub/manifest",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "@hub/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "nx": {
+    "tags": [
+      "scope:lib",
+      "lang:ts"
+    ],
+    "implicitDependencies": [
+      "manifest"
+    ],
+    "targets": {
+      "codegen": {
+        "command": "node scripts/codegen.mjs",
+        "options": {
+          "cwd": "{projectRoot}"
+        },
+        "cache": true,
+        "inputs": [
+          "{projectRoot}/scripts/codegen.mjs",
+          "{workspaceRoot}/libs/manifest/schema/*.schema.json"
+        ],
+        "outputs": [
+          "{projectRoot}/src/generated"
+        ]
+      },
+      "build": {
+        "dependsOn": [
+          "codegen",
+          "^build"
+        ]
+      },
+      "typecheck": {
+        "dependsOn": [
+          "codegen",
+          "^typecheck"
+        ]
+      }
+    }
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "json-schema-to-typescript": "16.0.0"
+  },
+  "description": "Types for hub app.manifest.yaml, generated from libs/manifest/schema."
+}

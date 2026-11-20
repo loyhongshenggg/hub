@@ -1,0 +1,13 @@
+{
+  "name": "boundaries",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "tags": ["scope:tool"],
+  "implicitDependencies": ["*"],
+  "targets": {
+    "lint": {
+      "command": "node tools/boundaries/check.mjs",
+      "cache": false
+    }
+  }
+}

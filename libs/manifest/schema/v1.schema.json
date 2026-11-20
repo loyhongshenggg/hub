@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hub.localhost/schemas/app.manifest.v1.json",
+  "title": "AppManifestV1",
+  "description": "hub app manifest, version 1 (apps/<id>/app.manifest.yaml).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifestVersion", "id", "name", "runtime", "health"],
+  "properties": {
+    "manifestVersion": {
+      "description": "Contract version. Breaking changes bump this; old versions keep working.",
+      "const": 1
+    },
+    "id": {
+      "description": "Unique app id. Becomes the subdomain (<id>.hub.localhost) and compose project (hub-<id>).",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "maxLength": 40
+    },
+    "name": {
+      "description": "Display name in the dock and tabs.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "description": {
+      "description": "One line shown on the home grid.",
+      "type": "string",
+      "maxLength": 200
+    },
+    "icon": {
+      "description": "Icon file (SVG or PNG), relative to the manifest.",
+      "type": "string",
+      "pattern": "\\.(svg|png)$"
+    },
+    "runtime": {
+      "description": "How the core runs the app.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["driver", "service", "port"],
+      "properties": {
+        "driver": {
+          "description": "Runtime driver.",
+          "type": "string",
+          "enum": ["docker"]
+        },
+        "compose": {
+          "description": "Compose file, relative to the manifest.",
+          "type": "string",
+          "minLength": 1,
+          "default": "./compose.yaml"
+        },
+        "service": {
+          "description": "Compose service the gateway routes to.",
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.-]*$"
+        },
+        "port": {
+          "description": "HTTP port inside the container.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      }
+    },
+    "health": {
+      "description": "Readiness check.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "description": "GET path that returns 2xx when the app is ready.",
+          "type": "string",
+          "pattern": "^/"
+        },
+        "startTimeout": {
+          "description": "How long to wait for the first 2xx after start, e.g. 60s, 2m.",
+          "type": "string",
+          "pattern": "^[1-9][0-9]*(ms|s|m)$",
+          "default": "60s"
+        }
+      }
+    },
+    "ui": {
+      "description": "How the shell shows the app.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "Page opened in the tab.",
+          "type": "string",
+          "pattern": "^/",
+          "default": "/"
+        },
+        "keepAlive": {
+          "description": "Keep the iframe mounted when switching tabs.",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "autoStart": {
+      "description": "Start the app when the core starts.",
+      "type": "boolean",
+      "default": false
+    }
+  }
+}
