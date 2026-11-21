@@ -96,6 +96,18 @@ var migrations = []string{
 		at      INTEGER NOT NULL,
 		PRIMARY KEY (chapter, ref)
 	);`,
+	// 4: reader cache. article is JSON (NULL when the page wasn't readable).
+	`CREATE TABLE reader_cache (
+		url        TEXT PRIMARY KEY,
+		article    TEXT,
+		failure    TEXT NOT NULL DEFAULT '',
+		fetched_at INTEGER NOT NULL
+	);
+	CREATE TABLE frame_policy (
+		host       TEXT PRIMARY KEY,
+		framing    INTEGER NOT NULL, -- reader.Framing
+		checked_at INTEGER NOT NULL
+	);`,
 }
 
 type Store struct{ db *sql.DB }

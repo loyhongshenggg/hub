@@ -85,6 +85,26 @@ func (e *Engine) Context(s *State, ref string) (track, chapter string) {
 	return "", ""
 }
 
+// Link returns the URL and content type of a curated step or practice, for
+// the reader. Practices without a lab link have none.
+func (e *Engine) Link(ref string) (url, typ string, err error) {
+	r, err := ParseRef(ref)
+	if err != nil {
+		return "", "", errInvalidf("%v", err)
+	}
+	switch r.Kind {
+	case "step":
+		if st := e.steps[ref]; st != nil {
+			return st.URL, st.Type, nil
+		}
+	case "practice":
+		if cr, ok := e.chapters[chapterKey(r.Track, r.Chapter)]; ok && cr.chapter.Practice != nil && cr.chapter.Practice.URL != "" {
+			return cr.chapter.Practice.URL, "lab", nil
+		}
+	}
+	return "", "", ErrNotFound
+}
+
 // HistoryEntry is one finished piece of content.
 type HistoryEntry struct {
 	Progress
