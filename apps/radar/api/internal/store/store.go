@@ -322,8 +322,9 @@ type Filter struct {
 	Query    string
 	Unread   bool
 	Saved    bool
-	// Topic keeps items tagged with this topic.
-	Topic string
+	// Topic keeps items tagged with this topic; Tagged, items with any topic.
+	Topic  string
+	Tagged bool
 	// MentorsOnly keeps items from mentor feeds; Mentor, from one mentor.
 	MentorsOnly bool
 	Mentor      string
@@ -358,6 +359,9 @@ func (f Filter) where() (string, []any) {
 	if f.Topic != "" {
 		conds = append(conds, "EXISTS (SELECT 1 FROM item_topics t WHERE t.item_id = i.id AND t.topic = ?)")
 		args = append(args, f.Topic)
+	}
+	if f.Tagged {
+		conds = append(conds, "EXISTS (SELECT 1 FROM item_topics t WHERE t.item_id = i.id)")
 	}
 	if f.MentorsOnly {
 		conds = append(conds, "s.mentor != ''")

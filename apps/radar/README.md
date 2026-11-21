@@ -1,7 +1,14 @@
 # Radar
 
-A learning dashboard built on curated tracks and mentors, plus SWE / security / AI news. Design: [docs/radar/design.md](../../docs/radar/design.md). Built in steps 3a–3f of Phase 2; 3a (content + tagging) 3b (engine + API) and 3c (reader) are done, the learning UI comes in 3d.
+A learning dashboard built on curated tracks and mentors, plus SWE / security / AI news. Design: [docs/radar/design.md](../../docs/radar/design.md). Built in steps 3a–3f of Phase 2: content + tagging (3a), engine + API (3b), reader (3c) and the UI (3d) are done; news hot topics and Claude features come in 3e.
 
+- **UI** (`web/src/`, React 19.3 + TanStack Query):
+  - **Dashboard** (`#/`): Learning (about 70%) and News (about 30%) side by side from 768px (container queries), one column below. The Learning side has the Continue card (one primary action), up next (with "not now"), tracks and fresh mentor items. The News side lists the latest stories on your topics.
+  - **Lesson focus mode** (`#/learn/<track>/<chapter>?step=<ref>`): step rail, the resource with its focus note, and a sticky Done bar with an optional rating. Done is optimistic and moves on at once; the next step's reader is prefetched. Then checkpoint and celebration.
+  - **Other screens**: track page, self-check (`#/assess`), history, settings, News and Sources.
+  - **Reader sheet**: news and fresh items open in a side sheet, not a new tab; a modified click still opens the site.
+  - **Motion**: tokens of 120, 240 and 400 ms; React `<ViewTransition>` between screens, with the chapter title morphing from card to lesson header. All of it is off under `prefers-reduced-motion`.
+  - **Keyboard**: `j`/`k` steps, `d` done, `o` open outside, `Esc` back.
 - **Learning content** (`api/content/`, embedded into the binary, validated on start):
   - `skills.yaml`: 23 topics in 5 areas, with prerequisites and tagger keywords.
   - `mentors.yaml`: 5 mentors (with feeds) and gap-filler sources.
@@ -22,16 +29,16 @@ A learning dashboard built on curated tracks and mentors, plus SWE / security / 
 - **News**: 16 feeds plus recent mentor items, fetched every 30 minutes (and on Refresh) with conditional GETs. News shows the last 120 days. Filter by category or topic, search, unread / saved, mark read, save. Deep link: `#sources`.
 - **Edit the news feeds** in [`api/content/sources.yaml`](api/content/sources.yaml). Removed feeds stop being fetched; saved items stay. Optional `topics:` sets fallback topics.
 
-| Path                                | What                                                                                     |
-| ----------------------------------- | ---------------------------------------------------------------------------------------- |
-| `api/content/`                      | Curated data and its loader/validator (`learning.go`, `feeds.go`, `content.go`)          |
-| `api/internal/fetch/`               | Feed fetching (gofeed), summary cleanup, pruning (unsaved news items > 120 days)         |
-| `api/internal/reader/`              | In-portal viewer: mode choice, extraction, sanitising, framing checks, SSRF-safe client  |
-| `api/internal/engine/`              | Adaptive engine: dashboard, chapter/track views, ratings, checkpoints, correctives, week |
-| `api/internal/tagger/`              | Rule-based topic tagger + the tagging pass (backfill / retag on rule changes)            |
-| `api/internal/store/`               | SQLite in `$DATA_DIR/radar.db`: sources + fetch status, items, topic tags, read/saved    |
-| `api/api.go`, `api/api_learning.go` | HTTP API (below)                                                                         |
-| `web/src/`                          | React UI (`news.tsx`, `sources.tsx`) on `@hub/ui-kit`                                    |
+| Path                                | What                                                                                          |
+| ----------------------------------- | --------------------------------------------------------------------------------------------- |
+| `api/content/`                      | Curated data and its loader/validator (`learning.go`, `feeds.go`, `content.go`)               |
+| `api/internal/fetch/`               | Feed fetching (gofeed), summary cleanup, pruning (unsaved news items > 120 days)              |
+| `api/internal/reader/`              | In-portal viewer: mode choice, extraction, sanitising, framing checks, SSRF-safe client       |
+| `api/internal/engine/`              | Adaptive engine: dashboard, chapter/track views, ratings, checkpoints, correctives, week      |
+| `api/internal/tagger/`              | Rule-based topic tagger + the tagging pass (backfill / retag on rule changes)                 |
+| `api/internal/store/`               | SQLite in `$DATA_DIR/radar.db`: sources + fetch status, items, topic tags, read/saved         |
+| `api/api.go`, `api/api_learning.go` | HTTP API (below)                                                                              |
+| `web/src/`                          | React UI: `home.tsx`, `lesson.tsx`, `viewer.tsx`, `track.tsx`, `news.tsx`, … on `@hub/ui-kit` |
 
 API:
 

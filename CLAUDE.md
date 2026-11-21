@@ -58,7 +58,7 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
     - [x] 3a content model, skill map, curated v1 tracks (agentic eng, exploitation, AI red teaming), tagger, mentor feeds (2026-11-21)
     - [x] 3b adaptive engine + API (2026-11-21)
     - [x] 3c in-portal reader / viewer (2026-11-21)
-    - [ ] 3d UI (Learning + News), motion, responsive
+    - [x] 3d UI (Learning + News), motion, responsive (2026-11-21)
     - [ ] 3e news hot topics; Claude switches (tagging, chapter drafts, discovery) + spend cap; algorithmic discovery
     - [ ] 3f badge/notify, ADR
   - [ ] Rebuild button

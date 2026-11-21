@@ -57,6 +57,7 @@ func filterFrom(r *http.Request) (store.Filter, error) {
 		Unread:   q.Get("unread") == "1",
 		Saved:    q.Get("saved") == "1",
 		Topic:    q.Get("topic"),
+		Tagged:   q.Get("tagged") == "1",
 		Mentor:   q.Get("mentor"),
 	}
 	if f.Category == "all" {

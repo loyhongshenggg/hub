@@ -113,6 +113,9 @@ func TestArticleReaderMode(t *testing.T) {
 		t.Fatalf("mode %s, note %q", v.Mode, v.Note)
 	}
 	a := v.Article
+	if unquote(`"Embrace The Red"`) != "Embrace The Red" || unquote("“x”") != "x" || unquote(`"a" and "b"`) != `a" and "b` {
+		t.Error("unquote")
+	}
 	if a.Title != "Exfil 101" || a.Words < minWords || a.Minutes < 1 {
 		t.Errorf("article meta: %+v", a)
 	}

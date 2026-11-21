@@ -19,6 +19,7 @@ import {
 } from './api';
 import { categories, categoryColor } from './categories';
 import { ago } from './format';
+import { useOpenItem } from './item-sheet';
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -43,6 +44,7 @@ export function News({
   const [unread, setUnread] = useState(false);
   const [saved, setSaved] = useState(false);
   const q = useDebounced(search, 250);
+  const openItem = useOpenItem();
   const filter: NewsFilter = { category, q, unread, saved };
   const key = JSON.stringify(filter);
 
@@ -216,6 +218,9 @@ export function News({
         >
           <RefreshCw className={cn(fetchStatus?.running && 'animate-spin')} />
         </Button>
+        <a href="#/sources" className="hover:text-foreground hover:underline">
+          Sources
+        </a>
         <Button
           variant="ghost"
           size="sm"
@@ -255,7 +260,16 @@ export function News({
                 href={it.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => void toggleRead(it, true)}
+                onClick={(e) => {
+                  // Plain click reads it inside Radar; modified clicks open the site.
+                  if (
+                    !(e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0)
+                  ) {
+                    e.preventDefault();
+                    openItem(it);
+                  }
+                  void toggleRead(it, true);
+                }}
                 className={cn(
                   'leading-snug hover:underline',
                   it.read ? 'text-muted-foreground' : 'font-medium',

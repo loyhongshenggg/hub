@@ -19,6 +19,14 @@ export {
   DropdownMenuTrigger,
 } from './components/dropdown-menu';
 export { Input } from './components/input';
+export {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from './components/sheet';
 export { Switch } from './components/switch';
 export {
   Tooltip,

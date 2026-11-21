@@ -573,7 +573,7 @@ func (e *Engine) Dashboard(s *State, pool []Item, now time.Time) Dashboard {
 	if cur != "" {
 		cr := e.chapters[cur]
 		rec := e.recommend(s, pool, Candidate{Kind: "chapter", Track: cr.track.ID, Chapter: cr.chapter.ID}, now)
-		rec.Why = []string{fmt.Sprintf("Chapter %d of %d in %s", cr.index+1, len(cr.track.Chapters), cr.track.Title)}
+		rec.Why = []string{} // the card already says where you are
 		d.Continue = &rec
 	}
 	for _, c := range ranked {

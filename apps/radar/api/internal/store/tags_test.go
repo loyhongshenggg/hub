@@ -79,6 +79,10 @@ func TestTagJobsAndSetTags(t *testing.T) {
 		t.Errorf("missing item: %v", err)
 	}
 
+	if tagged, _, _ := s.Items(ctx, Filter{Tagged: true}); len(tagged) != 3 {
+		t.Errorf("tagged filter: %d items", len(tagged))
+	}
+
 	// Topic order survives, and filters see the tags.
 	items, _, _ := s.Items(ctx, Filter{Topic: "data-exfiltration"})
 	if len(items) != 1 || !slices.Equal(items[0].Topics, []string{"prompt-injection", "data-exfiltration"}) ||

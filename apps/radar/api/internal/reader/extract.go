@@ -50,9 +50,9 @@ func extract(p *page) (*Article, string) {
 		return nil, "The page has too little text to read here"
 	}
 	a := &Article{
-		Title:   strings.TrimSpace(art.Title()),
-		Byline:  strings.TrimSpace(art.Byline()),
-		Site:    strings.TrimSpace(art.SiteName()),
+		Title:   unquote(art.Title()),
+		Byline:  unquote(art.Byline()),
+		Site:    unquote(art.SiteName()),
 		HTML:    policy.Sanitize(buf.String()),
 		Words:   words,
 		Minutes: max(1, (words+229)/230),
@@ -107,6 +107,18 @@ func videos(n *html.Node) {
 			f.Parent.RemoveChild(f)
 		}
 	}
+}
+
+// unquote trims space and one pair of wrapping quotes, which some sites put
+// in their metadata ("\"Embrace The Red\"").
+func unquote(s string) string {
+	s = strings.TrimSpace(s)
+	for _, q := range [][2]string{{`"`, `"`}, {"“", "”"}, {"'", "'"}} {
+		if len(s) >= 2 && strings.HasPrefix(s, q[0]) && strings.HasSuffix(s, q[1]) {
+			return strings.TrimSpace(s[len(q[0]) : len(s)-len(q[1])])
+		}
+	}
+	return s
 }
 
 func attr(n *html.Node, key string) string {
