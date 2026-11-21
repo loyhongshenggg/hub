@@ -1,0 +1,23 @@
+{
+  "name": "desktop",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "tools/desktop",
+  "tags": ["scope:tool"],
+  "targets": {
+    "icon": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "tools/desktop",
+        "command": "go run . ../../dist/tools/desktop/hub.ico"
+      },
+      "outputs": ["{workspaceRoot}/dist/tools/desktop/hub.ico"]
+    },
+    "install": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["icon", { "projects": ["core"], "target": "build" }],
+      "options": { "command": "bash tools/desktop/install.sh" },
+      "cache": false
+    }
+  }
+}

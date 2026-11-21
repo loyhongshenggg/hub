@@ -6,4 +6,5 @@ use (
 	./libs/go-appkit
 	./libs/manifest
 	./platform/core
+	./tools/desktop
 )

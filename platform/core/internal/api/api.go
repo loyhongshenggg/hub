@@ -50,11 +50,15 @@ type API struct {
 	Driver  runtime.Driver
 	AppURL  func(id string) string
 	Log     *slog.Logger
+	// Shutdown asks the core to exit (nil: not offered). The server's
+	// same-origin check keeps other sites from calling it.
+	Shutdown func()
 }
 
 func (a *API) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, map[string]string{"status": "ok"}) })
+	mux.HandleFunc("POST /api/system/shutdown", a.shutdown)
 	mux.HandleFunc("GET /api/apps", a.listApps)
 	mux.HandleFunc("GET /api/apps/{id}", a.getApp)
 	mux.HandleFunc("PATCH /api/apps/{id}", a.patchApp)
@@ -402,4 +406,13 @@ func (s *sse) ping() error {
 		return err
 	}
 	return s.rc.Flush()
+}
+
+func (a *API) shutdown(w http.ResponseWriter, _ *http.Request) {
+	if a.Shutdown == nil {
+		writeError(w, http.StatusNotFound, "shutdown is not available")
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]string{"status": "stopping"})
+	go a.Shutdown()
 }

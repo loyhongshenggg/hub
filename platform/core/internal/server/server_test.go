@@ -35,9 +35,10 @@ health: {path: /healthz}
 `
 
 type env struct {
-	url string // test server base URL
-	mg  *lifecycle.Manager
-	drv *fake.Driver
+	url  string // test server base URL
+	mg   *lifecycle.Manager
+	drv  *fake.Driver
+	quit chan struct{} // closed by POST /api/system/shutdown
 }
 
 func setup(t *testing.T) *env {
@@ -77,15 +78,17 @@ func setup(t *testing.T) *env {
 
 	shell, err := shellui.Handler("")
 	must(t, err)
+	quit := make(chan struct{})
 	srv := &server.Server{
 		ShellOrigin: cfg.ShellOrigin(),
-		API:         (&api.API{Manager: mg, Store: st, Driver: drv, AppURL: cfg.AppURL, Log: log}).Handler(),
-		Shell:       shell,
-		Gateway:     gateway.New(mg.Get, cfg.ShellOrigin(), log),
+		API: (&api.API{Manager: mg, Store: st, Driver: drv, AppURL: cfg.AppURL, Log: log,
+			Shutdown: func() { close(quit) }}).Handler(),
+		Shell:   shell,
+		Gateway: gateway.New(mg.Get, cfg.ShellOrigin(), log),
 	}
 	ts := httptest.NewServer(srv)
 	t.Cleanup(ts.Close)
-	return &env{url: ts.URL, mg: mg, drv: drv}
+	return &env{url: ts.URL, mg: mg, drv: drv, quit: quit}
 }
 
 func must(t *testing.T, err error) {
@@ -294,5 +297,33 @@ func TestSSE(t *testing.T) {
 	logs := readEvents(t, e, "/api/apps/notes/logs?follow=0", 2)
 	if len(logs) != 2 || logs[0][0] != "log" || !strings.Contains(logs[0][1], `"text":"listening"`) || logs[1][0] != "end" {
 		t.Errorf("logs = %v", logs)
+	}
+}
+
+func TestShutdown(t *testing.T) {
+	e := setup(t)
+	// Another site (or an app iframe) can't stop the hub.
+	for _, h := range [][]string{
+		{"Sec-Fetch-Site", "cross-site"},
+		{"Origin", "http://evil.example"},
+		{"Origin", "http://notes.hub.localhost:7000"},
+	} {
+		if resp, _ := e.do(t, "POST", shellHost, "/api/system/shutdown", "", h...); resp.StatusCode != http.StatusForbidden {
+			t.Errorf("%v: %d, want 403", h, resp.StatusCode)
+		}
+	}
+	select {
+	case <-e.quit:
+		t.Fatal("refused request still shut down")
+	default:
+	}
+	// The CLI and the desktop launcher send no browser headers.
+	if resp, _ := e.do(t, "POST", shellHost, "/api/system/shutdown", ""); resp.StatusCode != http.StatusAccepted {
+		t.Fatalf("shutdown: %d", resp.StatusCode)
+	}
+	select {
+	case <-e.quit:
+	case <-time.After(2 * time.Second):
+		t.Fatal("shutdown not requested")
 	}
 }

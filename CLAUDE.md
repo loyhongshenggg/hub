@@ -22,6 +22,7 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
 - Dev: `pnpm nx dev core` → shell (Vite + HMR) served through the core at `http://hub.localhost:7000`.
 - Build: `pnpm nx build core` → `dist/platform/core/hub` with the shell embedded; run `dist/platform/core/hub serve`.
 - Docker tests: `pnpm nx run core:integration`.
+- Desktop icon: `pnpm nx run desktop:install` (shortcut → `tools/desktop/launch.sh`; logs in `%LOCALAPPDATA%\hub`). `hub stop` stops a running core. A running app only picks up code changes after its image is rebuilt (no Rebuild button yet).
 
 ## Conventions
 
@@ -33,6 +34,7 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
 - App layout (see `apps/hello`): `app.manifest.yaml`, `compose.yaml`, `Dockerfile` (build context = repo root; `.dockerignore` at root), `api/` Go module embedding `web/` build via `api/ui/dist`, `web/` React app whose `package.json` lists its own deps (Docker installs with `--filter <web>...`). Tags: `scope:app`, `app:<id>` on all three projects.
 - ESLint 9, not 10: eslint-plugin-react / jsx-a11y / import don't support 10 yet (checked 2026-11-20). ESLint 9 is marked deprecated upstream — move to 10 once those plugins support it.
 - After adding/removing a TS project or workspace dep: `pnpm install && pnpm nx sync` (TS project references), or Nx tasks stop with "workspace is out of sync".
+- Apps that need system tools (finance: poppler + Tesseract for OCR) use a `debian:trixie-slim` runtime instead of distroless; Dev mode needs the same tools on the host (`tools/setup/wsl-toolchain.sh`).
 - Manifest schema: `libs/manifest/schema/v<N>.schema.json` is the source of truth. TS types are generated (`codegen` target, runs before build/typecheck); Go types are hand-written and a test fails if they drift.
 
 ## Status
@@ -61,9 +63,11 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
     - [x] 3d UI (Learning + News), motion, responsive (2026-11-21)
     - [ ] 3e news hot topics; Claude switches (tagging, chapter drafts, discovery) + spend cap; algorithmic discovery
     - [ ] 3f badge/notify, ADR
+  - [x] finance: goals (paragraph → Claude drafts), insights, statement import with local OCR + reconciliation, SG merchant resolver — design in [docs/finance/design.md](docs/finance/design.md) (2026-11-21)
   - [ ] Rebuild button
   - [ ] CPU/RAM per app
-  - [ ] Start on Windows login (ADR-0009)
+  - [x] Desktop icon: start on click, stop on close (ADR-0009, 2026-11-21) — `pnpm nx run desktop:install`
+  - [ ] Start on Windows login (ADR-0010)
 - [ ] Phase 3 — platform services
 
 <!-- nx configuration start-->

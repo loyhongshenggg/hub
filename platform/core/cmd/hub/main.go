@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"text/tabwriter"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"hub.localhost/platform/core/internal/runtime/docker"
 	"hub.localhost/platform/core/internal/runtime/process"
 	"hub.localhost/platform/core/internal/server"
+	"hub.localhost/platform/core/internal/session"
 	"hub.localhost/platform/core/internal/shellui"
 	"hub.localhost/platform/core/internal/store"
 	"hub.localhost/platform/core/internal/validate"
@@ -38,7 +40,8 @@ var version = "dev" // set with -ldflags "-X main.version=…"
 const usage = `hub — local multi-app platform
 
 Usage:
-  hub serve [--addr 127.0.0.1:7000] [--root DIR] [--data DIR] [--shell-dev URL]
+  hub serve [--addr 127.0.0.1:7000] [--root DIR] [--data DIR] [--shell-dev URL] [--session]
+  hub stop
   hub apps [ls]
   hub apps start|restart <id> [--dev] [--no-wait]
   hub apps stop <id> [--no-wait]
@@ -73,6 +76,8 @@ func run(ctx context.Context, args []string) error {
 	switch args[0] {
 	case "serve":
 		return serve(ctx, args[1:])
+	case "stop":
+		return stopCmd(ctx)
 	case "apps":
 		return apps(ctx, args[1:])
 	case "validate":
@@ -141,6 +146,7 @@ func serve(ctx context.Context, args []string) error {
 	root := fs.String("root", os.Getenv("HUB_ROOT"), "repo root (default: found from the current folder)")
 	data := fs.String("data", os.Getenv("HUB_DATA"), "data folder (default ~/.local/share/hub)")
 	shellDev := fs.String("shell-dev", "", "proxy the shell to this dev server URL instead of the embedded build")
+	sess := fs.Bool("session", false, "desktop session: on exit stop all apps, and restart them on the next start")
 	if _, err := flags(fs, args); err != nil {
 		return err
 	}
@@ -172,7 +178,15 @@ func serve(ctx context.Context, args []string) error {
 	}
 	defer devDrv.Close() // dev processes don't outlive the core
 
-	mg := lifecycle.New(ctx, lifecycle.Options{Driver: drv, DevDriver: devDrv, Log: log, AppHost: cfg.AppHost})
+	// The manager outlives the shutdown signal so a session can still stop
+	// its apps; life ends when serve returns.
+	life, endLife := context.WithCancel(context.Background())
+	defer endLife()
+	quit := make(chan struct{})
+	var quitOnce sync.Once
+	requestQuit := func() { quitOnce.Do(func() { close(quit) }) }
+
+	mg := lifecycle.New(life, lifecycle.Options{Driver: drv, DevDriver: devDrv, Log: log, AppHost: cfg.AppHost})
 	res, err := registry.Scan(cfg.AppsDir())
 	if err != nil {
 		return err
@@ -181,16 +195,19 @@ func serve(ctx context.Context, args []string) error {
 	for _, p := range res.Problems {
 		log.Warn("invalid app", "id", p.ID, "error", p.Error)
 	}
-	go mg.Run(ctx)
-	go registry.Watch(ctx, cfg.AppsDir(), 2*time.Second, func(res registry.Result, err error) {
+	go mg.Run(life)
+	go registry.Watch(life, cfg.AppsDir(), 2*time.Second, func(res registry.Result, err error) {
 		if err != nil {
 			log.Warn("scan apps", "error", err)
 			return
 		}
 		mg.Sync(res)
 	})
-	if err := autostart(ctx, mg, st, log); err != nil {
+	if err := autostart(life, mg, st, log); err != nil {
 		return err
+	}
+	if err := session.Restore(life, mg, st, log); err != nil {
+		log.Warn("session restore", "error", err)
 	}
 
 	shell, err := shellui.Handler(cfg.ShellDevURL)
@@ -199,7 +216,7 @@ func serve(ctx context.Context, args []string) error {
 	}
 	srv := &server.Server{
 		ShellOrigin: cfg.ShellOrigin(),
-		API:         (&api.API{Manager: mg, Store: st, Driver: drv, AppURL: cfg.AppURL, Log: log}).Handler(),
+		API:         (&api.API{Manager: mg, Store: st, Driver: drv, AppURL: cfg.AppURL, Log: log, Shutdown: requestQuit}).Handler(),
 		Shell:       shell,
 		Gateway:     gateway.New(mg.Get, cfg.ShellOrigin(), log),
 	}
@@ -214,17 +231,28 @@ func serve(ctx context.Context, args []string) error {
 	hs := &http.Server{
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
-		BaseContext:       func(net.Listener) context.Context { return ctx }, // ends SSE streams on shutdown
+		BaseContext:       func(net.Listener) context.Context { return life }, // ends SSE streams on shutdown
 	}
-	log.Info("hub is up", "shell", cfg.ShellOrigin(), "apps", cfg.AppsDir(), "data", cfg.DataDir, "version", version)
+	log.Info("hub is up", "shell", cfg.ShellOrigin(), "apps", cfg.AppsDir(), "data", cfg.DataDir, "version", version, "session", *sess)
 	errc := make(chan error, 1)
 	go func() { errc <- hs.Serve(ln) }()
 	select {
 	case err := <-errc:
 		return err
 	case <-ctx.Done():
+	case <-quit:
 	}
-	log.Info("shutting down (Run-mode apps keep running and are re-adopted on next start; dev processes stop)")
+	if *sess {
+		log.Info("shutting down the session: stopping apps (they restart on the next start)")
+		if n, err := session.Stop(context.Background(), mg, st, log, 2*time.Minute); err != nil {
+			log.Error("session stop", "error", err)
+		} else {
+			log.Info("session apps stopped", "count", n)
+		}
+	} else {
+		log.Info("shutting down (Run-mode apps keep running and are re-adopted on next start; dev processes stop)")
+	}
+	endLife()
 	sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	return hs.Shutdown(sctx)
@@ -414,3 +442,25 @@ type statusRecorder struct {
 
 func (s *statusRecorder) WriteHeader(code int)        { s.status = code; s.ResponseWriter.WriteHeader(code) }
 func (s *statusRecorder) Unwrap() http.ResponseWriter { return s.ResponseWriter }
+
+// stopCmd asks a running core to exit and waits until it has.
+func stopCmd(ctx context.Context) error {
+	c := cliClient()
+	if err := c.Shutdown(ctx); err != nil {
+		return err
+	}
+	fmt.Println("hub: stopping…")
+	deadline := time.Now().Add(3 * time.Minute)
+	for time.Now().Before(deadline) {
+		if err := c.Healthy(ctx); errors.Is(err, client.ErrNotRunning) {
+			fmt.Println("hub: stopped")
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(300 * time.Millisecond):
+		}
+	}
+	return errors.New("the core is still running after 3 minutes")
+}

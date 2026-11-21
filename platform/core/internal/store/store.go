@@ -24,6 +24,11 @@ var migrations = []string{
 		key   TEXT PRIMARY KEY,
 		value TEXT NOT NULL -- JSON
 	);`,
+	// 2: apps running when a session (desktop launcher) ended, restarted next time.
+	`CREATE TABLE session_apps (
+		app_id TEXT PRIMARY KEY,
+		mode   TEXT NOT NULL -- run | dev
+	);`,
 }
 
 type Store struct{ db *sql.DB }
@@ -142,4 +147,50 @@ func (s *Store) SetUIState(ctx context.Context, key string, value json.RawMessag
 		INSERT INTO ui_state (key, value) VALUES (?, ?)
 		ON CONFLICT (key) DO UPDATE SET value = excluded.value`, key, string(value))
 	return err
+}
+
+// SaveSession records which apps (id → mode) were running when a session
+// ended, replacing any earlier record.
+func (s *Store) SaveSession(ctx context.Context, apps map[string]string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, "DELETE FROM session_apps"); err != nil {
+		return err
+	}
+	for id, mode := range apps {
+		if _, err := tx.ExecContext(ctx, "INSERT INTO session_apps (app_id, mode) VALUES (?, ?)", id, mode); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// TakeSession returns and clears the apps recorded by SaveSession.
+func (s *Store) TakeSession(ctx context.Context) (map[string]string, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	rows, err := tx.QueryContext(ctx, "SELECT app_id, mode FROM session_apps")
+	if err != nil {
+		return nil, err
+	}
+	apps := map[string]string{}
+	for rows.Next() {
+		var id, mode string
+		if err := rows.Scan(&id, &mode); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		apps[id] = mode
+	}
+	rows.Close()
+	if _, err := tx.ExecContext(ctx, "DELETE FROM session_apps"); err != nil {
+		return nil, err
+	}
+	return apps, tx.Commit()
 }

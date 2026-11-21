@@ -15,7 +15,15 @@ pnpm nx build core                 # Go core with the shell embedded → dist/pl
 dist/platform/core/hub serve       # then open http://hub.localhost:7000
 ```
 
-Apps keep running when the core stops and are picked up again on the next start.
+Apps keep running when the core stops and are picked up again on the next start. `hub stop` stops a running core.
+
+### Desktop icon (Windows)
+
+```bash
+pnpm nx run desktop:install        # puts a "hub" shortcut on the Windows Desktop
+```
+
+Click it to open the hub in its own window. It starts the hub if it isn't running, and when you close the window it stops the hub and its apps, which come back on the next launch. Logs: `%LOCALAPPDATA%\hub`. Details: [ADR-0009](docs/adr/0009-desktop-launcher.md).
 
 ## Develop
 

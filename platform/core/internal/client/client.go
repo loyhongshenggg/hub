@@ -59,6 +59,16 @@ func (c *Client) do(ctx context.Context, method, path string, out any) error {
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
+// Healthy reports whether a core answers at c.Addr.
+func (c *Client) Healthy(ctx context.Context) error {
+	return c.do(ctx, http.MethodGet, "/api/healthz", nil)
+}
+
+// Shutdown asks the core to exit; it answers before it stops.
+func (c *Client) Shutdown(ctx context.Context) error {
+	return c.do(ctx, http.MethodPost, "/api/system/shutdown", nil)
+}
+
 func (c *Client) Apps(ctx context.Context) (api.AppsResponse, error) {
 	var r api.AppsResponse
 	return r, c.do(ctx, http.MethodGet, "/api/apps", &r)
