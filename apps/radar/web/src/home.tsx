@@ -375,11 +375,26 @@ function TrackRow({
     chapters.find((c) => c.status !== 'done')
   )?.id;
 
-  // Bring the next chapter into view without moving the page.
+  // Start at the left. Scroll only if the next chapter would be off-screen,
+  // and then keep the chapter before it in view for context. Positions are
+  // measured against the row itself (offsetLeft is relative to the page).
   useEffect(() => {
-    const el = row.current?.querySelector<HTMLElement>('[data-next="true"]');
-    if (el && row.current)
-      row.current.scrollLeft = Math.max(0, el.offsetLeft - 16);
+    const list = row.current;
+    const el = list?.querySelector<HTMLElement>('[data-next="true"]');
+    if (!list || !el) return;
+    const left =
+      el.getBoundingClientRect().left -
+      list.getBoundingClientRect().left +
+      list.scrollLeft;
+    if (left + el.offsetWidth <= list.clientWidth) {
+      list.scrollLeft = 0;
+      return;
+    }
+    const prev = el.previousElementSibling as HTMLElement | null;
+    list.scrollLeft = Math.max(
+      0,
+      left - (prev ? prev.offsetWidth + 12 : 0) - 16,
+    );
   }, [nextId]);
 
   return (
