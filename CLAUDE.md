@@ -54,7 +54,13 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
 - [ ] Phase 2 — dev ergonomics (driven by building `apps/radar`; design approved 2026-11-20)
   - [x] Dev mode: manifest `dev:` block, core process driver, shell + CLI ([ADR-0008](docs/adr/0008-dev-mode-host-processes.md))
   - [x] radar: news fetching + UI (16 feeds, SQLite, read/saved/search)
-  - [ ] radar: mentors, learning path, badge/notify
+  - [ ] radar learning dashboard — full design in [docs/radar/design.md](docs/radar/design.md) (approved 2026-11-21)
+    - [ ] 3a content model, skill map, curated v1 tracks (agentic eng, exploitation, AI red teaming), tagger, mentor feeds
+    - [ ] 3b adaptive engine + API
+    - [ ] 3c in-portal reader / viewer
+    - [ ] 3d UI (Learning + News), motion, responsive
+    - [ ] 3e news hot topics; Claude switches (tagging, chapter drafts, discovery) + spend cap; algorithmic discovery
+    - [ ] 3f badge/notify, ADR
   - [ ] Rebuild button
   - [ ] CPU/RAM per app
   - [ ] Start on Windows login (ADR-0009)
