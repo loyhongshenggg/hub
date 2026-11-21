@@ -53,13 +53,19 @@ type Mentor struct {
 	Area   string       `yaml:"area" json:"area"`
 	Links  []Link       `yaml:"links" json:"links"`
 	Feeds  []MentorFeed `yaml:"feeds" json:"-"`
+	// Avatar is a public picture (fetched and cached by the API); Face is
+	// where the UI loads it from.
+	Avatar string `yaml:"avatar" json:"-"`
+	Face   string `yaml:"-" json:"face,omitempty"`
 }
 
 // Origin is a non-mentor source a step can credit.
 type Origin struct {
-	ID   string `yaml:"id" json:"id"`
-	Name string `yaml:"name" json:"name"`
-	URL  string `yaml:"url" json:"url"`
+	ID     string `yaml:"id" json:"id"`
+	Name   string `yaml:"name" json:"name"`
+	URL    string `yaml:"url" json:"url"`
+	Avatar string `yaml:"avatar" json:"-"`
+	Face   string `yaml:"-" json:"face,omitempty"`
 }
 
 // Step is one ordered lesson item: a resource plus what to focus on.
@@ -136,6 +142,21 @@ type Curriculum struct {
 
 	topics  map[string]*Topic
 	origins map[string]string // id → display name (mentors + gap fillers)
+	avatars map[string]string // id → avatar URL
+}
+
+// FacePath is where the UI loads a mentor's or source's picture.
+const FacePath = "/api/avatars/"
+
+// AvatarURL is the picture URL for a mentor or gap filler ("" if none).
+func (c *Curriculum) AvatarURL(id string) string { return c.avatars[id] }
+
+// Face is the UI path of an origin's picture ("" if none).
+func (c *Curriculum) Face(id string) string {
+	if c.avatars[id] == "" {
+		return ""
+	}
+	return FacePath + id
 }
 
 func (c *Curriculum) Topic(id string) *Topic { return c.topics[id] }
@@ -259,8 +280,20 @@ func (c *Curriculum) validate() error {
 		bad("skill map has a cycle: %s", cyc)
 	}
 
-	c.origins = map[string]string{}
-	for _, m := range c.Mentors {
+	c.origins, c.avatars = map[string]string{}, map[string]string{}
+	avatar := func(kind, id, u string) string {
+		if u == "" {
+			return ""
+		}
+		if err := checkURL(kind+" "+id+" avatar", u); err != nil {
+			errs = append(errs, err)
+			return ""
+		}
+		c.avatars[id] = u
+		return FacePath + id
+	}
+	for i, m := range c.Mentors {
+		c.Mentors[i].Face = avatar("mentor", m.ID, m.Avatar)
 		if !idRe.MatchString(m.ID) || c.origins[m.ID] != "" {
 			bad("mentor %q: bad or duplicate id", m.ID)
 		}
@@ -287,7 +320,8 @@ func (c *Curriculum) validate() error {
 			}
 		}
 	}
-	for _, g := range c.GapFillers {
+	for i, g := range c.GapFillers {
+		c.GapFillers[i].Face = avatar("gap filler", g.ID, g.Avatar)
 		if !idRe.MatchString(g.ID) || c.origins[g.ID] != "" {
 			bad("gap filler %q: bad or duplicate id", g.ID)
 		}

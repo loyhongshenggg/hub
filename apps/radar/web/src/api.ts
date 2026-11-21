@@ -76,6 +76,7 @@ export interface StepView {
   type: StepType;
   url?: string;
   by?: string;
+  byId?: string;
   minutes: number;
   focus?: string;
   reason?: string;
@@ -178,6 +179,7 @@ export interface Mentor {
   focus: string;
   area: string;
   links: { label: string; url: string }[];
+  face?: string;
 }
 
 export interface TrackView extends TrackSummary {
@@ -220,7 +222,8 @@ export interface Curriculum {
   areas: { id: string; name: string }[];
   topics: Topic[];
   mentors: Mentor[];
-  tracks: { id: string; title: string; status?: string }[];
+  gapFillers: { id: string; name: string; url: string; face?: string }[];
+  tracks: { id: string; title: string; area: string; status?: string }[];
 }
 
 export interface Settings {

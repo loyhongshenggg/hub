@@ -263,6 +263,7 @@ type StepView struct {
 	Type     string   `json:"type"` // read | watch | lab | tool | walkthrough
 	URL      string   `json:"url,omitempty"`
 	By       string   `json:"by,omitempty"`
+	ByID     string   `json:"byId,omitempty"` // mentor or source id (for its face)
 	Minutes  int      `json:"minutes"`
 	Focus    string   `json:"focus,omitempty"`
 	Reason   string   `json:"reason,omitempty"`
@@ -299,14 +300,14 @@ type ChapterView struct {
 
 func (e *Engine) stepView(ref string, st *content.Step, s *State) StepView {
 	v := StepView{Ref: ref, Kind: "step", Title: st.Title, Type: st.Type, URL: st.URL, By: e.cur.OriginName(st.By),
-		Minutes: st.Minutes, Focus: st.Focus}
+		ByID: st.By, Minutes: st.Minutes, Focus: st.Focus}
 	e.withProgress(&v, s)
 	return v
 }
 
 func (e *Engine) itemView(it Item, kind string, s *State) StepView {
 	v := StepView{Ref: ItemRef(it.ID), Kind: kind, Title: it.Title, Type: it.Type, URL: it.URL,
-		By: e.cur.OriginName(it.Mentor), Minutes: it.Minutes}
+		By: e.cur.OriginName(it.Mentor), ByID: it.Mentor, Minutes: it.Minutes}
 	e.withProgress(&v, s)
 	return v
 }

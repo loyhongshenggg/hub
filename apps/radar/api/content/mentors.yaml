@@ -1,8 +1,11 @@
 # The people Radar's courses are built around, plus gap fillers. Feeds bring
-# in their new work automatically ("Fresh from …" steps and News).
+# in their new work automatically ("Fresh from …" steps and News). Avatars
+# are public GitHub or YouTube channel pictures (checked 2026-11-21); the API
+# caches them.
 mentors:
   - id: lauren-tan
     name: Lauren Tan
+    avatar: 'https://github.com/poteto.png?size=128'
     handle: poteto
     role: Engineer on AI coding agents; React Compiler core team
     focus: Verification-first agentic engineering — every correction becomes a deterministic check.
@@ -14,6 +17,7 @@ mentors:
 
   - id: rehberger
     name: Johann Rehberger
+    avatar: 'https://yt3.googleusercontent.com/imsZDUkdjQsq2tIvoc7CI3lsuuRWDHUg1yPph3eUDnYaT9OWHdEtnXnPzjzcWI891iASf8XQow=s128-c-k-c0x00ffffff-no-rj' # Embrace The Red channel picture
     handle: Embrace The Red
     role: Independent AI red teamer; built red teams at Microsoft, Uber and EA
     focus: Prompt injection, data exfiltration and exploits in AI agents and coding assistants.
@@ -22,21 +26,35 @@ mentors:
       - { label: Blog, url: 'https://embracethered.com/blog/' }
       - { label: YouTube, url: 'https://www.youtube.com/@embracethered' }
     feeds:
-      - { url: 'https://embracethered.com/blog/index.xml', type: post, topics: [prompt-injection] }
-      - { url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCSwcJXQWE6GWu9IKc0QwO5g', type: video, topics: [prompt-injection] }
+      - {
+          url: 'https://embracethered.com/blog/index.xml',
+          type: post,
+          topics: [prompt-injection],
+        }
+      - {
+          url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCSwcJXQWE6GWu9IKc0QwO5g',
+          type: video,
+          topics: [prompt-injection],
+        }
 
   - id: carlini
     name: Nicholas Carlini
+    avatar: 'https://github.com/carlini.png?size=128'
     role: Research scientist at Anthropic (previously Google DeepMind)
     focus: Adversarial ML, data poisoning, and LLM-driven vulnerability discovery.
     area: ai-security
     links:
       - { label: Website, url: 'https://nicholas.carlini.com/' }
     feeds:
-      - { url: 'https://nicholas.carlini.com/writing/feed.xml', type: post, topics: [adversarial-ml] }
+      - {
+          url: 'https://nicholas.carlini.com/writing/feed.xml',
+          type: post,
+          topics: [adversarial-ml],
+        }
 
   - id: pwn-college
     name: pwn.college
+    avatar: 'https://github.com/pwncollege.png?size=128'
     handle: Yan Shoshitaishvili
     role: ASU's free hacking curriculum; Shellphish / AIxCC
     focus: Hands-on fundamentals — Linux, assembly, web, reversing, binary exploitation.
@@ -45,28 +63,92 @@ mentors:
       - { label: Dojos, url: 'https://pwn.college/dojos' }
       - { label: YouTube, url: 'https://www.youtube.com/@pwncollege' }
     feeds:
-      - { url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCBaWwFw7KmCN8YlfX4ERYKg', type: video, topics: [binary-exploitation] }
+      - {
+          url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCBaWwFw7KmCN8YlfX4ERYKg',
+          type: video,
+          topics: [binary-exploitation],
+        }
 
   - id: hammond
     name: John Hammond
+    avatar: 'https://github.com/JohnHammond.png?size=128'
     role: Security researcher at Huntress
     focus: Malware analysis, threat hunting and CTFs, explained on video.
     area: defense
     links:
       - { label: YouTube, url: 'https://www.youtube.com/@_JohnHammond' }
     feeds:
-      - { url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCVeW9qkBjo3zosnqUbG7CFw', type: video, topics: [malware-analysis] }
+      - {
+          url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCVeW9qkBjo3zosnqUbG7CFw',
+          type: video,
+          topics: [malware-analysis],
+        }
 
 # Well-known free resources that cover what the mentors don't.
 gapFillers:
-  - { id: portswigger, name: PortSwigger Web Security Academy, url: 'https://portswigger.net/web-security' }
-  - { id: owasp-genai, name: OWASP Gen AI Security Project, url: 'https://genai.owasp.org/' }
-  - { id: mitre-atlas, name: MITRE ATLAS, url: 'https://atlas.mitre.org/' }
-  - { id: simonw, name: Simon Willison, url: 'https://simonwillison.net/' }
-  - { id: anthropic-eng, name: Anthropic Engineering, url: 'https://www.anthropic.com/engineering' }
-  - { id: hamel, name: Hamel Husain, url: 'https://hamel.dev/' }
-  - { id: factory, name: Factory, url: 'https://www.factory.ai/' }
-  - { id: eslint, name: ESLint docs, url: 'https://eslint.org/docs/latest/' }
-  - { id: typescript-eslint, name: typescript-eslint docs, url: 'https://typescript-eslint.io/' }
-  - { id: martin-fowler, name: martinfowler.com, url: 'https://martinfowler.com/' }
-  - { id: react, name: React docs, url: 'https://react.dev/' }
+  - {
+      id: portswigger,
+      name: PortSwigger Web Security Academy,
+      url: 'https://portswigger.net/web-security',
+      avatar: 'https://github.com/PortSwigger.png?size=128',
+    }
+  - {
+      id: owasp-genai,
+      name: OWASP Gen AI Security Project,
+      url: 'https://genai.owasp.org/',
+      avatar: 'https://github.com/OWASP.png?size=128',
+    }
+  - {
+      id: mitre-atlas,
+      name: MITRE ATLAS,
+      url: 'https://atlas.mitre.org/',
+      avatar: 'https://github.com/mitre-atlas.png?size=128',
+    }
+  - {
+      id: simonw,
+      name: Simon Willison,
+      url: 'https://simonwillison.net/',
+      avatar: 'https://github.com/simonw.png?size=128',
+    }
+  - {
+      id: anthropic-eng,
+      name: Anthropic Engineering,
+      url: 'https://www.anthropic.com/engineering',
+      avatar: 'https://github.com/anthropics.png?size=128',
+    }
+  - {
+      id: hamel,
+      name: Hamel Husain,
+      url: 'https://hamel.dev/',
+      avatar: 'https://github.com/hamelsmu.png?size=128',
+    }
+  - {
+      id: factory,
+      name: Factory,
+      url: 'https://www.factory.ai/',
+      avatar: 'https://github.com/Factory-AI.png?size=128',
+    }
+  - {
+      id: eslint,
+      name: ESLint docs,
+      url: 'https://eslint.org/docs/latest/',
+      avatar: 'https://github.com/eslint.png?size=128',
+    }
+  - {
+      id: typescript-eslint,
+      name: typescript-eslint docs,
+      url: 'https://typescript-eslint.io/',
+      avatar: 'https://github.com/typescript-eslint.png?size=128',
+    }
+  - {
+      id: martin-fowler,
+      name: martinfowler.com,
+      url: 'https://martinfowler.com/',
+      avatar: 'https://github.com/martinfowler.png?size=128',
+    }
+  - {
+      id: react,
+      name: React docs,
+      url: 'https://react.dev/',
+      avatar: 'https://github.com/reactjs.png?size=128',
+    }

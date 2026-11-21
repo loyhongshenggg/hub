@@ -6,7 +6,8 @@ import { ViewTransition } from 'react';
 import { api } from './api';
 import { keys, useTrack } from './queries';
 import { navigate } from './router';
-import { Difficulty, ProgressBar, Skeleton, minutes, useDelayed } from './ui';
+import { Difficulty, Skeleton, minutes, useDelayed } from './ui';
+import { AreaIcon, Face, tint } from './look';
 
 export function Track({ id }: { id: string }) {
   const q = useTrack(id);
@@ -19,7 +20,10 @@ export function Track({ id }: { id: string }) {
   const firstOpen = t.chapterList.find((c) => c.status !== 'done');
   const capstoneReady = t.completed === t.chapters && t.capstone;
   return (
-    <div className="@container mx-auto max-w-3xl space-y-8">
+    <div
+      style={tint(t.area)}
+      className="@container mx-auto max-w-3xl space-y-8"
+    >
       <Button
         variant="ghost"
         size="sm"
@@ -28,40 +32,54 @@ export function Track({ id }: { id: string }) {
       >
         <ArrowLeft /> Dashboard
       </Button>
-      <header className="space-y-3">
-        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          {t.level} · {t.chapters} chapters · {minutes(t.minutes)}
-        </p>
-        <ViewTransition name={`track-${t.id}`}>
-          <h1 className="text-3xl font-semibold tracking-tight text-balance">
-            {t.title}
-          </h1>
-        </ViewTransition>
-        <p className="text-muted-foreground">{t.tagline}</p>
-        <div className="flex items-center gap-3 pt-1">
-          <ProgressBar
-            value={t.completed}
-            max={t.chapters}
-            className="max-w-64 flex-1"
-          />
-          <span className="text-xs text-muted-foreground">
-            {t.completed} of {t.chapters} done
-          </span>
-          {firstOpen && (
-            <Button
-              size="sm"
-              className="ml-auto"
-              onClick={() =>
-                navigate({ name: 'lesson', track: t.id, chapter: firstOpen.id })
-              }
-            >
-              {firstOpen.status === 'active'
-                ? 'Continue'
-                : t.completed
-                  ? 'Next chapter'
-                  : 'Start'}
-            </Button>
-          )}
+      <header className="relative space-y-3 overflow-hidden rounded-2xl border bg-card p-6">
+        <div
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-(--tc)/18 via-(--tc)/5 to-transparent"
+          aria-hidden="true"
+        />
+        <div className="relative space-y-3">
+          <AreaIcon area={t.area} size="lg" />
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            {t.level} · {t.chapters} chapters · {minutes(t.minutes)}
+          </p>
+          <ViewTransition name={`track-${t.id}`}>
+            <h1 className="text-3xl font-semibold tracking-tight text-balance">
+              {t.title}
+            </h1>
+          </ViewTransition>
+          <p className="text-muted-foreground">{t.tagline}</p>
+          <div className="flex items-center gap-3 pt-1">
+            <div className="h-1.5 max-w-64 flex-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-(--tc)"
+                style={{
+                  width: `${(t.completed / Math.max(1, t.chapters)) * 100}%`,
+                }}
+              />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {t.completed} of {t.chapters} done
+            </span>
+            {firstOpen && (
+              <Button
+                size="sm"
+                className="ml-auto bg-(--tc) text-white hover:bg-(--tc)/90"
+                onClick={() =>
+                  navigate({
+                    name: 'lesson',
+                    track: t.id,
+                    chapter: firstOpen.id,
+                  })
+                }
+              >
+                {firstOpen.status === 'active'
+                  ? 'Continue'
+                  : t.completed
+                    ? 'Next chapter'
+                    : 'Start'}
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -70,23 +88,26 @@ export function Track({ id }: { id: string }) {
           {t.mentorInfo.map((m) => (
             <div
               key={m.id}
-              className="min-w-56 flex-1 rounded-xl border bg-card p-4 text-sm"
+              className="flex min-w-56 flex-1 gap-3 rounded-xl border bg-card p-4 text-sm"
             >
-              <p className="font-medium">{m.name}</p>
-              <p className="text-xs text-muted-foreground">{m.role}</p>
-              <p className="mt-2 text-muted-foreground">{m.focus}</p>
-              <div className="mt-2 flex flex-wrap gap-x-3 text-xs">
-                {m.links.map((l) => (
-                  <a
-                    key={l.url}
-                    href={l.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    {l.label} <ExternalLink className="inline size-3" />
-                  </a>
-                ))}
+              <Face id={m.id} size="lg" />
+              <div className="min-w-0">
+                <p className="font-medium">{m.name}</p>
+                <p className="text-xs text-muted-foreground">{m.role}</p>
+                <p className="mt-2 text-muted-foreground">{m.focus}</p>
+                <div className="mt-2 flex flex-wrap gap-x-3 text-xs">
+                  {m.links.map((l) => (
+                    <a
+                      key={l.url}
+                      href={l.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {l.label} <ExternalLink className="inline size-3" />
+                    </a>
+                  ))}
+                </div>
               </div>
             </div>
           ))}
@@ -105,8 +126,8 @@ export function Track({ id }: { id: string }) {
               <span
                 className={cn(
                   'grid size-8 shrink-0 place-items-center rounded-full border text-sm font-medium tabular-nums',
-                  c.status === 'done' && 'border-success bg-success text-white',
-                  c.status === 'active' && 'border-primary text-primary',
+                  c.status === 'done' && 'border-(--tc) bg-(--tc) text-white',
+                  c.status === 'active' && 'border-(--tc) text-(--tc)',
                 )}
               >
                 {c.status === 'done' ? (

@@ -108,6 +108,14 @@ var migrations = []string{
 		framing    INTEGER NOT NULL, -- reader.Framing
 		checked_at INTEGER NOT NULL
 	);`,
+	// 5: cached mentor / source pictures.
+	`CREATE TABLE avatars (
+		id           TEXT PRIMARY KEY,
+		url          TEXT NOT NULL,
+		content_type TEXT NOT NULL,
+		data         BLOB NOT NULL,
+		fetched_at   INTEGER NOT NULL
+	);`,
 }
 
 type Store struct{ db *sql.DB }

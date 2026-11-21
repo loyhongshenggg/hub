@@ -19,6 +19,7 @@ import {
 import { api, type Item } from './api';
 import { ago } from './format';
 import { keys, useDone } from './queries';
+import { Face } from './look';
 import { OpenOutside, Viewer } from './viewer';
 
 const OpenItem = createContext<(it: Item) => void>(() => undefined);
@@ -70,11 +71,14 @@ function ItemBody({ item, onClose }: { item: Item; onClose: () => void }) {
   const mentor = !!item.source.mentor;
   return (
     <div className="flex min-h-full flex-col">
-      <div className="space-y-1 border-b px-5 pt-5 pb-4 pr-12">
-        <SheetDescription>
-          {item.source.name} · {ago(item.publishedAt)}
-        </SheetDescription>
-        <SheetTitle className="text-lg leading-snug">{item.title}</SheetTitle>
+      <div className="flex gap-3 border-b px-5 pt-5 pb-4 pr-12">
+        {mentor && <Face id={item.source.mentor} size="md" />}
+        <div className="min-w-0 space-y-1">
+          <SheetDescription>
+            {item.source.name} · {ago(item.publishedAt)}
+          </SheetDescription>
+          <SheetTitle className="text-lg leading-snug">{item.title}</SheetTitle>
+        </div>
       </div>
       <div className="flex-1 px-5 py-5">
         <Viewer refId={`item:${item.id}`} compact />

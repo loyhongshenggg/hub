@@ -33,7 +33,6 @@ import { navigate } from './router';
 import {
   Difficulty,
   Kbd,
-  ProgressBar,
   Segmented,
   Skeleton,
   TypeIcon,
@@ -42,6 +41,7 @@ import {
   useDelayed,
 } from './ui';
 import { Viewer } from './viewer';
+import { AreaIcon, Face, tint, useTrackArea } from './look';
 
 const ratings = [
   { value: 'easy' as const, label: 'Too easy' },
@@ -81,6 +81,7 @@ export function Lesson({
 
 function LessonBody({ view, step }: { view: ChapterView; step?: string }) {
   const qc = useQueryClient();
+  const area = useTrackArea(view.track);
   const rows = rowsOf(view);
   const current =
     rows.find((r) => r.ref === step) ?? view.next ?? rows[0] ?? view.checkpoint;
@@ -114,8 +115,8 @@ function LessonBody({ view, step }: { view: ChapterView; step?: string }) {
   });
 
   return (
-    <div className="@container min-h-dvh">
-      <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+    <div style={tint(area)} className="@container min-h-dvh">
+      <header className="sticky top-0 z-20 border-t-2 border-b border-t-(--tc) bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5">
           <Button
             variant="ghost"
@@ -126,6 +127,7 @@ function LessonBody({ view, step }: { view: ChapterView; step?: string }) {
           >
             <ArrowLeft />
           </Button>
+          <AreaIcon area={area} size="sm" />
           <div className="min-w-0 flex-1">
             <button
               className="block truncate text-xs text-muted-foreground hover:text-foreground"
@@ -140,11 +142,14 @@ function LessonBody({ view, step }: { view: ChapterView; step?: string }) {
             </ViewTransition>
           </div>
           <div className="hidden w-40 shrink-0 items-center gap-2 @2xl:flex">
-            <ProgressBar
-              value={view.stepsDone}
-              max={view.stepsTotal}
-              className="flex-1"
-            />
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-(--tc) transition-[width] duration-(--dur-slow)"
+                style={{
+                  width: `${(view.stepsDone / Math.max(1, view.stepsTotal)) * 100}%`,
+                }}
+              />
+            </div>
             <span className="text-xs text-muted-foreground tabular-nums">
               {view.stepsDone}/{view.stepsTotal}
             </span>
@@ -223,7 +228,7 @@ function StepRail({
                 aria-current={on ? 'step' : undefined}
                 className={cn(
                   'flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors duration-(--dur-fast) hover:bg-accent',
-                  on && 'bg-accent font-medium',
+                  on && 'bg-(--tc)/10 font-medium',
                   r.status === 'skipped' && 'opacity-60',
                 )}
               >
@@ -314,6 +319,7 @@ function StepPanel({
     <div className="space-y-5 pb-28">
       <div className="space-y-2">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-muted-foreground">
+          {row.byId && <Face id={row.byId} size="xs" />}
           <TypeIcon type={row.type} kind={row.kind} className="size-3.5" />
           {row.kind === 'practice'
             ? 'Practice'
@@ -332,7 +338,7 @@ function StepPanel({
       </div>
 
       {row.focus && (
-        <aside className="rounded-xl border-l-4 border-primary bg-primary/5 px-4 py-3 text-sm leading-relaxed">
+        <aside className="rounded-xl border-l-4 border-(--tc) bg-(--tc)/8 px-4 py-3 text-sm leading-relaxed">
           <span className="font-semibold">Focus · </span>
           {row.focus}
         </aside>
@@ -529,7 +535,10 @@ function ActionBar({
                   <X /> Not for me
                 </Button>
               )}
-              <Button onClick={finish} className="min-w-28">
+              <Button
+                onClick={finish}
+                className="min-w-28 bg-(--tc) text-white hover:bg-(--tc)/90"
+              >
                 <Check /> Done <Kbd>d</Kbd>
               </Button>
             </div>
