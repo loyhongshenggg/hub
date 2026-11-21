@@ -1,5 +1,5 @@
-// Package content holds Radar's curated, version-controlled data: the news
-// sources (and, later, mentors). The database only stores state.
+// Package content holds Radar's curated, version-controlled data: news
+// sources, the skill map, mentors and tracks. The database only stores state.
 package content
 
 import (
@@ -24,6 +24,12 @@ type Source struct {
 	Name     string `yaml:"name" json:"name"`
 	Category string `yaml:"category" json:"category"`
 	URL      string `yaml:"url" json:"url"`
+	// Topics are skill-map topics the tagger falls back on when an item
+	// matches none (checked by Feeds).
+	Topics []string `yaml:"topics" json:"topics,omitempty"`
+	// Mentor and Kind are set for mentor feeds (see Feeds), never in YAML.
+	Mentor string `yaml:"-" json:"mentor,omitempty"`
+	Kind   string `yaml:"-" json:"kind,omitempty"` // post | video
 }
 
 type Sources struct {

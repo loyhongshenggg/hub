@@ -24,13 +24,23 @@ type api struct {
 	store      *store.Store
 	fetcher    fetcher
 	categories []content.Category
+	curriculum *content.Curriculum
+	// window is how far back News goes (mentor feeds keep older items for
+	// learning). Zero: no limit.
+	window time.Duration
 }
+
+// freshDays is how recent a mentor item must be to count as fresh.
+const freshDays = 60
 
 func (a *api) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/news", a.news)
 	mux.HandleFunc("POST /api/news/read-all", a.readAll)
 	mux.HandleFunc("POST /api/items/{id}/read", a.flag(a.store.SetRead, "read"))
 	mux.HandleFunc("POST /api/items/{id}/saved", a.flag(a.store.SetSaved, "saved"))
+	mux.HandleFunc("PUT /api/items/{id}/topics", a.setTopics)
+	mux.HandleFunc("GET /api/curriculum", a.curriculumHandler)
+	mux.HandleFunc("GET /api/learning/fresh", a.fresh)
 	mux.HandleFunc("GET /api/sources", a.sources)
 	mux.HandleFunc("GET /api/summary", a.summary)
 	mux.HandleFunc("POST /api/refresh", a.refresh)
@@ -46,6 +56,8 @@ func filterFrom(r *http.Request) (store.Filter, error) {
 		Query:    q.Get("q"),
 		Unread:   q.Get("unread") == "1",
 		Saved:    q.Get("saved") == "1",
+		Topic:    q.Get("topic"),
+		Mentor:   q.Get("mentor"),
 	}
 	if f.Category == "all" {
 		f.Category = ""
@@ -65,12 +77,21 @@ func filterFrom(r *http.Request) (store.Filter, error) {
 	return f, nil
 }
 
+// since is the start of the News window.
+func (a *api) since() time.Time {
+	if a.window == 0 {
+		return time.Unix(0, 0)
+	}
+	return time.Now().Add(-a.window)
+}
+
 func (a *api) news(w http.ResponseWriter, r *http.Request) {
 	f, err := filterFrom(r)
 	if err != nil {
 		writeError(w, 400, err.Error())
 		return
 	}
+	f.Since = a.since().Unix()
 	items, next, err := a.store.Items(r.Context(), f)
 	if err != nil {
 		writeError(w, 500, err.Error())
@@ -85,6 +106,7 @@ func (a *api) readAll(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 400, err.Error())
 		return
 	}
+	f.Since = a.since().Unix()
 	n, err := a.store.MarkAllRead(r.Context(), f)
 	if err != nil {
 		writeError(w, 500, err.Error())
@@ -144,13 +166,75 @@ func fetchStatus(running bool, last time.Time) map[string]any {
 }
 
 func (a *api) summary(w http.ResponseWriter, r *http.Request) {
-	c, err := a.store.Counts(r.Context())
+	c, err := a.store.Counts(r.Context(), a.since())
 	if err != nil {
 		writeError(w, 500, err.Error())
 		return
 	}
 	running, last := a.fetcher.Status()
 	writeJSON(w, 200, map[string]any{"counts": c, "fetch": fetchStatus(running, last)})
+}
+
+func (a *api) curriculumHandler(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, 200, a.curriculum)
+}
+
+// fresh lists recent mentor items ("Fresh from <mentor>"), newest first.
+func (a *api) fresh(w http.ResponseWriter, r *http.Request) {
+	f, err := filterFrom(r)
+	if err != nil {
+		writeError(w, 400, err.Error())
+		return
+	}
+	f.MentorsOnly = true
+	f.Since = time.Now().AddDate(0, 0, -freshDays).Unix()
+	items, next, err := a.store.Items(r.Context(), f)
+	if err != nil {
+		writeError(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]any{"items": items, "nextCursor": next})
+}
+
+// setTopics is the hand fix for tags: PUT {"topics": [...]} (best first).
+// The rules tagger never overwrites it.
+func (a *api) setTopics(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeError(w, 400, "bad item id")
+		return
+	}
+	var body struct {
+		Topics []string `json:"topics"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&body); err != nil || body.Topics == nil {
+		writeError(w, 400, `body must be {"topics": ["topic-id", ...]}`)
+		return
+	}
+	if len(body.Topics) > 5 {
+		writeError(w, 400, "at most 5 topics")
+		return
+	}
+	for _, t := range body.Topics {
+		if a.curriculum.Topic(t) == nil {
+			writeError(w, 400, fmt.Sprintf("unknown topic %q", t))
+			return
+		}
+	}
+	tags, _, err := a.store.ItemTags(r.Context(), id)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, 404, "no such item")
+		return
+	} else if err != nil {
+		writeError(w, 500, err.Error())
+		return
+	}
+	tags.Topics = body.Topics
+	if err := a.store.SetTags(r.Context(), map[int64]store.Tags{id: tags}, store.TaggedByUser, ""); err != nil {
+		writeError(w, 500, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (a *api) refresh(w http.ResponseWriter, _ *http.Request) {

@@ -104,7 +104,7 @@ func TestReadSaveCountsPrune(t *testing.T) {
 	if err := s.SetRead(ctx, 9999, true); err != ErrNotFound {
 		t.Errorf("missing item: %v", err)
 	}
-	c, err := s.Counts(ctx)
+	c, err := s.Counts(ctx, time.Unix(0, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestReadSaveCountsPrune(t *testing.T) {
 	if err := s.SetLastVisit(ctx, t0.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
-	c, _ = s.Counts(ctx)
+	c, _ = s.Counts(ctx, time.Unix(0, 0))
 	if c.Unread != 1 || c.NewSinceVisit != 0 {
 		t.Errorf("after mark-all + visit: %+v", c)
 	}

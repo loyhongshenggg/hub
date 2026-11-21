@@ -1,5 +1,6 @@
-// Command radar is the API of the Radar hub app: it follows news feeds
-// (SWE, security, AI) and serves the React UI from ../web.
+// Command radar is the API of the Radar hub app: a learning dashboard built
+// on curated tracks and mentor feeds, plus SWE / security / AI news. It
+// serves the React UI from ../web.
 package main
 
 import (
@@ -13,6 +14,7 @@ import (
 	"hub.localhost/apps/radar/api/content"
 	"hub.localhost/apps/radar/api/internal/fetch"
 	"hub.localhost/apps/radar/api/internal/store"
+	"hub.localhost/apps/radar/api/internal/tagger"
 	"hub.localhost/libs/go-appkit"
 )
 
@@ -45,7 +47,15 @@ func run(app *appkit.App) error {
 	if err != nil {
 		return err
 	}
-	if err := st.SyncSources(ctx, srcs.Sources); err != nil {
+	cur, err := content.LoadCurriculum()
+	if err != nil {
+		return err
+	}
+	feeds, err := content.Feeds(srcs, cur)
+	if err != nil {
+		return err
+	}
+	if err := st.SyncSources(ctx, feeds); err != nil {
 		return err
 	}
 	app.AddCheck("db", st.Ping)
@@ -54,10 +64,22 @@ func run(app *appkit.App) error {
 	if err != nil {
 		return err
 	}
-	f := &fetch.Fetcher{Store: st, Log: app.Log, Interval: interval}
-	go f.Run(ctx)
+	tg := tagger.New(cur)
+	tag := func() {
+		if n, err := tg.Pass(ctx, st); err != nil {
+			app.Log.Error("tagging", "error", err)
+		} else if n > 0 {
+			app.Log.Info("tagged items", "count", n, "version", tg.Version)
+		}
+	}
+	const window = 120 * 24 * time.Hour
+	f := &fetch.Fetcher{Store: st, Log: app.Log, Interval: interval, Retention: window, OnNew: func(int) { tag() }}
+	go func() {
+		tag() // backfill, or retag after a skills.yaml change
+		f.Run(ctx)
+	}()
 
-	(&api{store: st, fetcher: f, categories: srcs.Categories}).routes(app.Mux)
+	(&api{store: st, fetcher: f, categories: srcs.Categories, curriculum: cur, window: window}).routes(app.Mux)
 	ui, _ := fs.Sub(uiFS, "ui/dist")
 	app.Mux.Handle("/", appkit.SPA(ui))
 	return app.Run()

@@ -1,0 +1,12 @@
+id: threat-modeling
+title: 'Threat modeling and secure design'
+tagline: The senior-engineer skill — find design flaws before they ship and argue the trade-offs.
+area: defense
+level: intermediate
+mentors: []
+status: outline
+chapters:
+  - { id: four-questions, title: 'The four questions of threat modeling', difficulty: 2, topics: [threat-modeling], outcomes: [Run a lightweight threat model on a feature.] }
+  - { id: stride-and-trees, title: 'STRIDE and attack trees', difficulty: 3, topics: [threat-modeling], outcomes: [Enumerate threats systematically.] }
+  - { id: ai-systems, title: 'Threat-modeling AI systems and agents', difficulty: 4, topics: [threat-modeling, agent-security], outcomes: [Threat-model an agent with tools and data.] }
+  - { id: design-reviews, title: 'Running security design reviews', difficulty: 4, topics: [threat-modeling], outcomes: [Lead a design review and write actionable findings.] }

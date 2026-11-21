@@ -23,7 +23,7 @@ Designed backwards ([Understanding by Design](https://www.wikipedia.org/wiki/Und
   4. **Checkpoint**: tick each outcome you can now do, plus a rating (_Too easy / Just right / Too hard_ + _Worth it?_). Any outcome not met → a corrective step before moving on ([mastery learning](https://ascd.org/el/articles/lessons-of-mastery-learning)).
 - **First tracks built in full**: Agentic engineering (Lauren Tan), Exploitation fundamentals (pwn.college), AI red teaming (Rehberger + OWASP LLM Top 10 + PortSwigger LLM labs). Outlines: Adversarial ML & poisoning (Carlini), Web security (PortSwigger), Malware analysis & detection (Hammond, ATT&CK, Sigma), Threat modeling & secure design.
 - **Mentors**: Lauren Tan (no feed; curated links), Johann Rehberger, Nicholas Carlini, pwn.college (Yan Shoshitaishvili), John Hammond. **Gap fillers**: PortSwigger Web Security Academy, OWASP, MITRE ATLAS/ATT&CK, Sigma. Every curated URL is checked before it ships.
-- **Skill map**: ~18 topics in 5 areas (foundations, offense, AI security, defense, AI-era SWE) with prerequisite edges; a first-run self-assessment seeds the starting level per topic.
+- **Skill map**: 23 topics in 5 areas (foundations, offense, AI security, defense, AI-era SWE) with prerequisite edges; a first-run self-assessment seeds the starting level per topic.
 
 ## 3. Adaptive engine
 

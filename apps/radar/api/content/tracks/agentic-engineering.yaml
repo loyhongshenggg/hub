@@ -1,0 +1,259 @@
+id: agentic-engineering
+title: 'Agentic engineering: shipping with coding agents'
+tagline: Work like a senior engineer whose teammates are agents — guardrails over rules, verification over review.
+area: ai-swe
+level: intermediate
+mentors: [lauren-tan]
+chapters:
+  - id: agents-as-teammates
+    title: Agents as teammates
+    summary: What an agent actually is, when a workflow beats an agent, and the mindset shift Lauren Tan argues for.
+    difficulty: 2
+    topics: [agentic-engineering]
+    outcomes:
+      - Explain the difference between a workflow and an agent, and when you would pick each.
+      - Describe the agent loop (model, tools, environment, stopping) in your own words.
+      - Summarise the "inverse pyramid" of where agent lessons should live.
+    steps:
+      - id: building-effective-agents
+        title: Building effective agents
+        type: read
+        by: anthropic-eng
+        url: 'https://www.anthropic.com/engineering/building-effective-agents'
+        minutes: 20
+        focus: Read the workflow patterns (prompt chaining, routing, orchestrator-workers) before the agents section. Note the advice to start with the simplest thing that works.
+      - id: vibe-engineering
+        title: Vibe engineering
+        type: read
+        by: simonw
+        url: 'https://simonwillison.net/2025/Oct/7/vibe-engineering/'
+        minutes: 12
+        focus: List the habits Simon says separate senior engineers using agents from "vibe coding" — tests, planning, docs, review.
+      - id: all-code-is-slop-talk
+        title: 'All Code Is Slop (Except Mine) — Lauren Tan'
+        type: watch
+        by: lauren-tan
+        url: 'https://www.youtube.com/watch?v=O_zcc6Xl12g'
+        minutes: 25
+        focus: Draw her inverse pyramid — codebase design, static analysis, verification, then prose rules — and note one example for each layer.
+    practice:
+      title: Map your own agent corrections
+      type: walkthrough
+      minutes: 20
+      steps:
+        - Open the last few sessions where you corrected an agent (Claude Code history, PR comments, or memory).
+        - Write each correction as one line, e.g. "used fetch without handling non-2xx".
+        - For each, decide which pyramid layer could prevent it — API design, a lint rule or type, a test, or only prose.
+        - Keep the list; chapter 3 turns the best candidate into a lint rule.
+
+  - id: guardrails-over-rules
+    title: 'Guardrails over rules: turn corrections into checks'
+    summary: Why a rules file is the weakest place for a lesson, and how linters steer agents better than prose.
+    difficulty: 3
+    topics: [verification, agentic-engineering]
+    outcomes:
+      - Argue why a deterministic check beats another line in CLAUDE.md or AGENTS.md.
+      - Rank candidate fixes for an agent mistake by how reliably they prevent it.
+      - Design an error message an agent can act on without help.
+    steps:
+      - id: slop-summary
+        title: 'All Code Is Slop: the pyramid, summarised'
+        type: read
+        by: lauren-tan
+        url: 'https://aiengineerguide.com/til/all-code-is-slop-except-mine-by-lauren-tan/'
+        minutes: 8
+        focus: A written recap of the talk — use it to check your pyramid from chapter 1.
+      - id: trust-before-parallel
+        title: 'Trust first, then parallel'
+        type: read
+        by: lauren-tan
+        url: 'https://redreamality.com/blog/lauren-tan-poteto-trust-before-parallel/'
+        minutes: 10
+        focus: Why running many agents in parallel only works once their output is trustworthy; what "trust" is built from.
+      - id: linters-direct-agents
+        title: Using linters to direct agents
+        type: read
+        by: factory
+        url: 'https://www.factory.ai/using-linters-to-direct-agents'
+        minutes: 12
+        focus: Look at how lint messages are written for agents — specific, with the fix spelled out.
+    practice:
+      title: Pick the guardrail for each correction
+      type: walkthrough
+      minutes: 15
+      steps:
+        - Take your list from chapter 1 and pick the three most frequent corrections.
+        - For each, write the guardrail you would add and the exact error message an agent would see.
+        - Mark which one can be a custom lint rule — that is your chapter-3 project.
+
+  - id: custom-lint-rules
+    title: Writing custom lint rules
+    summary: Build and test an ESLint rule, including type-aware rules with typescript-eslint.
+    difficulty: 3
+    topics: [verification]
+    outcomes:
+      - Write an ESLint rule that matches AST nodes with selectors and reports a fixable error.
+      - Test a rule with RuleTester, including valid and invalid cases.
+      - Use type information from typescript-eslint when syntax alone is not enough.
+    steps:
+      - id: eslint-custom-rules
+        title: ESLint custom rules
+        type: read
+        by: eslint
+        url: 'https://eslint.org/docs/latest/extend/custom-rules'
+        minutes: 25
+        focus: Rule structure (meta, create), selectors, context.report with fix. Skim options and schemas.
+      - id: ts-eslint-custom-rules
+        title: typescript-eslint custom rules
+        type: read
+        by: typescript-eslint
+        url: 'https://typescript-eslint.io/developers/custom-rules'
+        minutes: 20
+        focus: RuleCreator, typed rules (getParserServices + the type checker), and testing with RuleTester.
+    practice:
+      title: Ship a lint rule in hub
+      type: walkthrough
+      minutes: 60
+      steps:
+        - In hub, create a local ESLint plugin (e.g. tools/eslint-rules) with one rule for your chapter-2 correction.
+        - Write the error message for an agent — say what is wrong and what to do instead.
+        - Add RuleTester cases (at least two valid, two invalid).
+        - Enable it in eslint.config.mjs and run `pnpm nx run-many -t lint` — fix or allowlist what it finds.
+        - Ask an agent to make a change that would break the rule and watch it self-correct from the lint output.
+
+  - id: self-verification
+    title: Let the agent check its own work
+    summary: Tests, hooks and tools that let an agent verify without a human in the loop.
+    difficulty: 3
+    topics: [verification, agentic-engineering]
+    outcomes:
+      - Set up a loop where an agent runs checks after each change and reacts to failures.
+      - Use Claude Code hooks to run lint/tests automatically.
+      - Design a tool an agent can use to observe results (logs, screenshots, API calls).
+    steps:
+      - id: claude-code-best-practices
+        title: Best practices for Claude Code
+        type: read
+        by: anthropic-eng
+        url: 'https://www.anthropic.com/engineering/claude-code-best-practices'
+        minutes: 25
+        focus: The explore → plan → code → commit loop, and the sections on giving Claude ways to verify (tests, screenshots).
+      - id: claude-code-hooks
+        title: Claude Code hooks reference
+        type: read
+        by: anthropic-eng
+        url: 'https://code.claude.com/docs/en/hooks'
+        minutes: 20
+        focus: PostToolUse hooks and exit codes — how a hook's output gets back to the model.
+      - id: writing-tools-for-agents
+        title: Writing effective tools for agents
+        type: read
+        by: anthropic-eng
+        url: 'https://www.anthropic.com/engineering/writing-tools-for-agents'
+        minutes: 20
+        focus: Tool naming, returning meaningful context, and token-efficient responses.
+    practice:
+      title: Add a verification hook to hub
+      type: walkthrough
+      minutes: 40
+      steps:
+        - Add a PostToolUse hook that runs the affected project's lint and tests after file edits.
+        - Make the hook's failure output short and actionable.
+        - Ask an agent for a change that breaks a test and confirm it fixes it without you stepping in.
+
+  - id: context-engineering
+    title: Context engineering
+    summary: What to put in an agent's context, what to keep out, and how to structure it.
+    difficulty: 3
+    topics: [context-engineering]
+    outcomes:
+      - Explain why context is a finite budget and how agents degrade as it fills.
+      - Decide what belongs in a project guide versus a skill versus a lint rule.
+      - Restructure a CLAUDE.md so each line earns its place.
+    steps:
+      - id: effective-context-engineering
+        title: Effective context engineering for AI agents
+        type: read
+        by: anthropic-eng
+        url: 'https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents'
+        minutes: 25
+        focus: Context rot, just-in-time retrieval, compaction, and structured notes.
+      - id: exploring-gen-ai
+        title: Exploring Generative AI
+        type: read
+        by: martin-fowler
+        url: 'https://martinfowler.com/articles/exploring-gen-ai.html'
+        minutes: 25
+        focus: Pick two memos on how teams structure context and prompts; compare with the Anthropic guide.
+    practice:
+      title: Audit hub's CLAUDE.md
+      type: walkthrough
+      minutes: 30
+      steps:
+        - For every line in hub's CLAUDE.md, mark it as keep, move to a skill, or replace with a check.
+        - Turn one "replace with a check" line into a lint rule or test.
+        - Re-read the result as if you were the agent — is anything ambiguous?
+
+  - id: evals
+    title: Evals for AI features
+    summary: Measure AI behaviour instead of eyeballing it.
+    difficulty: 4
+    topics: [evals]
+    outcomes:
+      - Build a small eval set from real failures (error analysis first).
+      - Choose between code-based checks and an LLM judge for a criterion.
+      - Use an eval to decide whether a prompt or model change helped.
+    steps:
+      - id: your-ai-product-needs-evals
+        title: Your AI product needs evals
+        type: read
+        by: hamel
+        url: 'https://hamel.dev/blog/posts/evals/'
+        minutes: 30
+        focus: The three levels (unit tests, human and model eval, A/B), and starting from logged failures.
+    practice:
+      title: Eval Radar's tagger
+      type: walkthrough
+      minutes: 45
+      steps:
+        - Export 30 Radar items with their tags; correct the tags by hand.
+        - Write a script that scores the tagger (keyword or Claude) against your corrections.
+        - Change one keyword list or prompt and re-run — did precision or recall move?
+
+  - id: correctness-by-construction
+    title: 'Case study: correctness by construction'
+    summary: How the React Compiler removes a whole class of bugs — the same idea as agent guardrails, at language level.
+    difficulty: 3
+    topics: [verification]
+    outcomes:
+      - Explain what the React Compiler automates and which rules it relies on.
+      - Relate compiler-enforced rules to agent guardrails.
+    steps:
+      - id: forget-about-memo
+        title: 'Forget About Memo — Lauren Tan, React Conf 2024'
+        type: watch
+        by: lauren-tan
+        url: 'https://conf2024.react.dev/talks/5'
+        minutes: 25
+        focus: How automatic memoisation works and why the Rules of React make it possible.
+      - id: react-compiler
+        title: React Compiler
+        type: read
+        by: react
+        url: 'https://react.dev/learn/react-compiler'
+        minutes: 15
+        focus: What the compiler needs from your code, and the lint plugin that enforces it.
+
+capstone:
+  title: Make hub agent-ready
+  summary: Apply the whole track to this repo and write it up like a senior engineer would.
+  outcomes:
+    - Two deterministic guardrails for real agent mistakes, with tests.
+    - A verification hook the agent relies on.
+    - A small eval for one AI feature.
+    - A one-page design note explaining the choices and trade-offs.
+  steps:
+    - Pick the two most valuable guardrails from your correction list and ship them.
+    - Wire the verification hook and prove it catches a regression.
+    - Add the tagger eval to Nx as a target.
+    - Write docs/adr/ entry for the guardrail strategy.

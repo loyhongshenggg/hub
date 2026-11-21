@@ -1,5 +1,6 @@
-// Package store keeps Radar's state in SQLite: sources with fetch status,
-// news items, and what the user read or saved.
+// Package store keeps Radar's state in SQLite: sources (news and mentor
+// feeds) with fetch status, items with their topic tags, and what the user
+// read or saved.
 package store
 
 import (
@@ -43,6 +44,22 @@ var migrations = []string{
 	);
 	CREATE INDEX items_published ON items (published_at DESC, id DESC);
 	CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
+	// 2: mentor feeds and tags. tagged_by: '' (not yet) | rules | claude | user.
+	`ALTER TABLE sources ADD COLUMN mentor TEXT NOT NULL DEFAULT '';
+	ALTER TABLE sources ADD COLUMN kind TEXT NOT NULL DEFAULT 'post';
+	ALTER TABLE sources ADD COLUMN topics TEXT NOT NULL DEFAULT '';
+	ALTER TABLE items ADD COLUMN difficulty INTEGER NOT NULL DEFAULT 0;
+	ALTER TABLE items ADD COLUMN type TEXT NOT NULL DEFAULT '';
+	ALTER TABLE items ADD COLUMN minutes INTEGER NOT NULL DEFAULT 0;
+	ALTER TABLE items ADD COLUMN tagged_by TEXT NOT NULL DEFAULT '';
+	ALTER TABLE items ADD COLUMN tag_version TEXT NOT NULL DEFAULT '';
+	CREATE TABLE item_topics (
+		item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+		topic   TEXT NOT NULL,
+		rank    INTEGER NOT NULL,
+		PRIMARY KEY (item_id, topic)
+	);
+	CREATE INDEX item_topics_topic ON item_topics (topic, item_id);`,
 }
 
 type Store struct{ db *sql.DB }
@@ -104,15 +121,19 @@ func (s *Store) SyncSources(ctx context.Context, srcs []content.Source) error {
 		return err
 	}
 	for _, src := range srcs {
+		kind := src.Kind
+		if kind == "" {
+			kind = "post"
+		}
 		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO sources (id, name, url, category, active) VALUES (?, ?, ?, ?, 1)
+			INSERT INTO sources (id, name, url, category, active, mentor, kind, topics) VALUES (?, ?, ?, ?, 1, ?, ?, ?)
 			ON CONFLICT (id) DO UPDATE SET
 				name = excluded.name, category = excluded.category, active = 1,
-				url = excluded.url,
+				url = excluded.url, mentor = excluded.mentor, kind = excluded.kind, topics = excluded.topics,
 				-- a new URL invalidates the cache validators
 				etag = CASE WHEN sources.url = excluded.url THEN sources.etag ELSE '' END,
 				last_modified = CASE WHEN sources.url = excluded.url THEN sources.last_modified ELSE '' END`,
-			src.ID, src.Name, src.URL, src.Category); err != nil {
+			src.ID, src.Name, src.URL, src.Category, src.Mentor, kind, strings.Join(src.Topics, ",")); err != nil {
 			return err
 		}
 	}
@@ -125,6 +146,8 @@ type Source struct {
 	Name         string     `json:"name"`
 	URL          string     `json:"url"`
 	Category     string     `json:"category"`
+	Mentor       string     `json:"mentor,omitempty"`
+	Kind         string     `json:"kind"`
 	Active       bool       `json:"active"`
 	ETag         string     `json:"-"`
 	LastModified string     `json:"-"`
@@ -143,7 +166,7 @@ func unixPtr(v sql.NullInt64) *time.Time {
 }
 
 func (s *Store) Sources(ctx context.Context, activeOnly bool) ([]Source, error) {
-	q := `SELECT s.id, s.name, s.url, s.category, s.active, s.etag, s.last_modified,
+	q := `SELECT s.id, s.name, s.url, s.category, s.mentor, s.kind, s.active, s.etag, s.last_modified,
 		s.last_fetch_at, s.last_ok_at, s.last_error,
 		(SELECT COUNT(*) FROM items i WHERE i.source_id = s.id)
 		FROM sources s`
@@ -160,7 +183,7 @@ func (s *Store) Sources(ctx context.Context, activeOnly bool) ([]Source, error) 
 	for rows.Next() {
 		var src Source
 		var fetch, ok sql.NullInt64
-		if err := rows.Scan(&src.ID, &src.Name, &src.URL, &src.Category, &src.Active, &src.ETag, &src.LastModified,
+		if err := rows.Scan(&src.ID, &src.Name, &src.URL, &src.Category, &src.Mentor, &src.Kind, &src.Active, &src.ETag, &src.LastModified,
 			&fetch, &ok, &src.LastError, &src.Items); err != nil {
 			return nil, err
 		}
@@ -231,10 +254,16 @@ type Item struct {
 	PublishedAt time.Time `json:"publishedAt"`
 	Read        bool      `json:"read"`
 	Saved       bool      `json:"saved"`
+	Topics      []string  `json:"topics"` // best first; empty until tagged
+	Difficulty  int       `json:"difficulty,omitempty"`
+	Type        string    `json:"type,omitempty"` // read | watch | lab
+	Minutes     int       `json:"minutes,omitempty"`
+	TaggedBy    string    `json:"taggedBy,omitempty"`
 	Source      struct {
 		ID       string `json:"id"`
 		Name     string `json:"name"`
 		Category string `json:"category"`
+		Mentor   string `json:"mentor,omitempty"`
 	} `json:"source"`
 }
 
@@ -245,6 +274,14 @@ type Filter struct {
 	Query    string
 	Unread   bool
 	Saved    bool
+	// Topic keeps items tagged with this topic.
+	Topic string
+	// MentorsOnly keeps items from mentor feeds; Mentor, from one mentor.
+	MentorsOnly bool
+	Mentor      string
+	// Since keeps items published at or after this Unix time (News shows a
+	// window; mentor feeds keep their whole back catalogue).
+	Since int64
 	// Before is a keyset cursor: items strictly older than (time, id).
 	BeforeTime int64
 	BeforeID   int64
@@ -270,6 +307,21 @@ func (f Filter) where() (string, []any) {
 	if f.Unread {
 		conds = append(conds, "i.read_at IS NULL")
 	}
+	if f.Topic != "" {
+		conds = append(conds, "EXISTS (SELECT 1 FROM item_topics t WHERE t.item_id = i.id AND t.topic = ?)")
+		args = append(args, f.Topic)
+	}
+	if f.MentorsOnly {
+		conds = append(conds, "s.mentor != ''")
+	}
+	if f.Mentor != "" {
+		conds = append(conds, "s.mentor = ?")
+		args = append(args, f.Mentor)
+	}
+	if f.Since > 0 {
+		conds = append(conds, "i.published_at >= ?")
+		args = append(args, f.Since)
+	}
 	if f.Saved {
 		conds = append(conds, "i.saved_at IS NOT NULL")
 	}
@@ -291,7 +343,9 @@ func (s *Store) Items(ctx context.Context, f Filter) ([]Item, string, error) {
 	}
 	where, args := f.where()
 	rows, err := s.db.QueryContext(ctx, `SELECT i.id, i.title, i.url, i.summary, i.published_at,
-		i.read_at IS NOT NULL, i.saved_at IS NOT NULL, s.id, s.name, s.category
+		i.read_at IS NOT NULL, i.saved_at IS NOT NULL, i.difficulty, i.type, i.minutes, i.tagged_by,
+		(SELECT group_concat(topic, ',') FROM (SELECT topic FROM item_topics t WHERE t.item_id = i.id ORDER BY rank)),
+		s.id, s.name, s.category, s.mentor
 		FROM items i JOIN sources s ON s.id = i.source_id`+where+`
 		ORDER BY i.published_at DESC, i.id DESC LIMIT ?`, append(args, f.Limit+1)...)
 	if err != nil {
@@ -303,11 +357,14 @@ func (s *Store) Items(ctx context.Context, f Filter) ([]Item, string, error) {
 	for rows.Next() {
 		var it Item
 		var pub int64
+		var topics sql.NullString
 		if err := rows.Scan(&it.ID, &it.Title, &it.URL, &it.Summary, &pub, &it.Read, &it.Saved,
-			&it.Source.ID, &it.Source.Name, &it.Source.Category); err != nil {
+			&it.Difficulty, &it.Type, &it.Minutes, &it.TaggedBy, &topics,
+			&it.Source.ID, &it.Source.Name, &it.Source.Category, &it.Source.Mentor); err != nil {
 			return nil, "", err
 		}
 		it.PublishedAt = time.Unix(pub, 0).UTC()
+		it.Topics = splitList(topics.String)
 		if len(out) == f.Limit {
 			return out, fmt.Sprintf("%d.%d", lastPub, out[len(out)-1].ID), rows.Err()
 		}
@@ -366,10 +423,12 @@ type Counts struct {
 	NewSinceVisit int `json:"newSinceVisit"`
 }
 
-func (s *Store) Counts(ctx context.Context) (Counts, error) {
+// Counts covers items published at or after since (the News window), so a
+// mentor's back catalogue doesn't count as unread news.
+func (s *Store) Counts(ctx context.Context, since time.Time) (Counts, error) {
 	c := Counts{UnreadByCategory: map[string]int{}}
 	rows, err := s.db.QueryContext(ctx, `SELECT s.category, COUNT(*) FROM items i JOIN sources s ON s.id = i.source_id
-		WHERE i.read_at IS NULL GROUP BY s.category`)
+		WHERE i.read_at IS NULL AND i.published_at >= ? GROUP BY s.category`, since.Unix())
 	if err != nil {
 		return c, err
 	}
@@ -390,7 +449,8 @@ func (s *Store) Counts(ctx context.Context) (Counts, error) {
 	}
 	err = s.db.QueryRowContext(ctx, `SELECT
 		(SELECT COUNT(*) FROM items WHERE saved_at IS NOT NULL),
-		(SELECT COUNT(*) FROM items WHERE read_at IS NULL AND fetched_at > ?)`, visit.Unix()).Scan(&c.Saved, &c.NewSinceVisit)
+		(SELECT COUNT(*) FROM items WHERE read_at IS NULL AND fetched_at > ? AND published_at >= ?)`,
+		visit.Unix(), since.Unix()).Scan(&c.Saved, &c.NewSinceVisit)
 	return c, err
 }
 
@@ -414,9 +474,11 @@ func (s *Store) SetLastVisit(ctx context.Context, t time.Time) error {
 	return err
 }
 
-// Prune deletes unsaved items published before cutoff.
+// Prune deletes unsaved news items published before cutoff. Mentor items are
+// learning content and stay.
 func (s *Store) Prune(ctx context.Context, cutoff time.Time) (int64, error) {
-	res, err := s.db.ExecContext(ctx, "DELETE FROM items WHERE saved_at IS NULL AND published_at < ?", cutoff.Unix())
+	res, err := s.db.ExecContext(ctx, `DELETE FROM items WHERE saved_at IS NULL AND published_at < ?
+		AND source_id NOT IN (SELECT id FROM sources WHERE mentor != '')`, cutoff.Unix())
 	if err != nil {
 		return 0, err
 	}

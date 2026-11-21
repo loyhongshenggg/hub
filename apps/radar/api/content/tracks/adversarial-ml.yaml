@@ -1,0 +1,33 @@
+id: adversarial-ml
+title: 'Adversarial ML and data poisoning'
+tagline: How models break — adversarial examples, poisoning, backdoors and extraction — with Nicholas Carlini.
+area: ai-security
+level: advanced
+mentors: [carlini, rehberger]
+status: outline
+chapters:
+  - id: how-models-learn
+    title: How models learn (just enough ML)
+    difficulty: 2
+    topics: [ml-fundamentals]
+    outcomes: [Explain training, loss and gradients well enough to reason about attacks.]
+  - id: adversarial-examples
+    title: Adversarial examples and broken defenses
+    difficulty: 4
+    topics: [adversarial-ml]
+    outcomes: [Craft an adversarial example., Explain why most published defenses fail evaluation.]
+  - id: poisoning-and-backdoors
+    title: Data poisoning and backdoors
+    difficulty: 4
+    topics: [data-poisoning]
+    outcomes: [Explain split-view and frontrunning poisoning of web-scale datasets., Backdoor a model and detect it.]
+  - id: extraction-and-privacy
+    title: Model extraction and training-data leakage
+    difficulty: 4
+    topics: [adversarial-ml]
+    outcomes: [Explain how training data is extracted from LLMs and what limits it.]
+  - id: llms-finding-bugs
+    title: LLMs that find and exploit bugs
+    difficulty: 4
+    topics: [binary-exploitation, agent-security]
+    outcomes: [Describe how LLM-driven vulnerability discovery works today and its limits.]

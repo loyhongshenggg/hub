@@ -1,0 +1,12 @@
+id: web-security
+title: 'Web security'
+tagline: The PortSwigger Web Security Academy path, from server-side bugs to client-side attacks.
+area: offense
+level: intermediate
+mentors: []
+status: outline
+chapters:
+  - { id: server-side, title: 'Server-side: SQLi, path traversal, command injection, SSRF', difficulty: 3, topics: [web-security], outcomes: [Exploit and fix the classic server-side bugs.] }
+  - { id: auth-and-access, title: 'Authentication and access control', difficulty: 3, topics: [web-security], outcomes: [Break and fix broken auth and IDOR.] }
+  - { id: client-side, title: 'Client-side: XSS, CSRF, CORS', difficulty: 3, topics: [web-security], outcomes: [Exploit and prevent client-side attacks with CSP and SameSite.] }
+  - { id: llm-web-attacks, title: 'Web LLM attacks', difficulty: 3, topics: [web-security, prompt-injection], outcomes: [Exploit LLM-backed web features.] }

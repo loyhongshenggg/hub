@@ -1,0 +1,72 @@
+# The people Radar's courses are built around, plus gap fillers. Feeds bring
+# in their new work automatically ("Fresh from …" steps and News).
+mentors:
+  - id: lauren-tan
+    name: Lauren Tan
+    handle: poteto
+    role: Engineer on AI coding agents; React Compiler core team
+    focus: Verification-first agentic engineering — every correction becomes a deterministic check.
+    area: ai-swe
+    links:
+      - { label: X, url: 'https://x.com/poteto' }
+      - { label: GitHub, url: 'https://github.com/poteto' }
+    feeds: [] # no blog or feed; talks are curated by hand
+
+  - id: rehberger
+    name: Johann Rehberger
+    handle: Embrace The Red
+    role: Independent AI red teamer; built red teams at Microsoft, Uber and EA
+    focus: Prompt injection, data exfiltration and exploits in AI agents and coding assistants.
+    area: ai-security
+    links:
+      - { label: Blog, url: 'https://embracethered.com/blog/' }
+      - { label: YouTube, url: 'https://www.youtube.com/@embracethered' }
+    feeds:
+      - { url: 'https://embracethered.com/blog/index.xml', type: post, topics: [prompt-injection] }
+      - { url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCSwcJXQWE6GWu9IKc0QwO5g', type: video, topics: [prompt-injection] }
+
+  - id: carlini
+    name: Nicholas Carlini
+    role: Research scientist at Anthropic (previously Google DeepMind)
+    focus: Adversarial ML, data poisoning, and LLM-driven vulnerability discovery.
+    area: ai-security
+    links:
+      - { label: Website, url: 'https://nicholas.carlini.com/' }
+    feeds:
+      - { url: 'https://nicholas.carlini.com/writing/feed.xml', type: post, topics: [adversarial-ml] }
+
+  - id: pwn-college
+    name: pwn.college
+    handle: Yan Shoshitaishvili
+    role: ASU's free hacking curriculum; Shellphish / AIxCC
+    focus: Hands-on fundamentals — Linux, assembly, web, reversing, binary exploitation.
+    area: offense
+    links:
+      - { label: Dojos, url: 'https://pwn.college/dojos' }
+      - { label: YouTube, url: 'https://www.youtube.com/@pwncollege' }
+    feeds:
+      - { url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCBaWwFw7KmCN8YlfX4ERYKg', type: video, topics: [binary-exploitation] }
+
+  - id: hammond
+    name: John Hammond
+    role: Security researcher at Huntress
+    focus: Malware analysis, threat hunting and CTFs, explained on video.
+    area: defense
+    links:
+      - { label: YouTube, url: 'https://www.youtube.com/@_JohnHammond' }
+    feeds:
+      - { url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCVeW9qkBjo3zosnqUbG7CFw', type: video, topics: [malware-analysis] }
+
+# Well-known free resources that cover what the mentors don't.
+gapFillers:
+  - { id: portswigger, name: PortSwigger Web Security Academy, url: 'https://portswigger.net/web-security' }
+  - { id: owasp-genai, name: OWASP Gen AI Security Project, url: 'https://genai.owasp.org/' }
+  - { id: mitre-atlas, name: MITRE ATLAS, url: 'https://atlas.mitre.org/' }
+  - { id: simonw, name: Simon Willison, url: 'https://simonwillison.net/' }
+  - { id: anthropic-eng, name: Anthropic Engineering, url: 'https://www.anthropic.com/engineering' }
+  - { id: hamel, name: Hamel Husain, url: 'https://hamel.dev/' }
+  - { id: factory, name: Factory, url: 'https://www.factory.ai/' }
+  - { id: eslint, name: ESLint docs, url: 'https://eslint.org/docs/latest/' }
+  - { id: typescript-eslint, name: typescript-eslint docs, url: 'https://typescript-eslint.io/' }
+  - { id: martin-fowler, name: martinfowler.com, url: 'https://martinfowler.com/' }
+  - { id: react, name: React docs, url: 'https://react.dev/' }

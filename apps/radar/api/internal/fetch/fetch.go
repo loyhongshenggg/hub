@@ -189,8 +189,11 @@ func (f *Fetcher) fetchOne(ctx context.Context, src store.Source) (int, error) {
 		return 0, fmt.Errorf("parse feed: %w", err)
 	}
 	items := Normalize(feed, src.URL, time.Now())
-	if len(items) > f.MaxPerFetch {
-		items = items[:f.MaxPerFetch]
+	// A mentor's back catalogue is learning material: take all of it.
+	if limit := f.MaxPerFetch; src.Mentor == "" && len(items) > limit {
+		items = items[:limit]
+	} else if len(items) > maxMentorItems {
+		items = items[:maxMentorItems]
 	}
 	n, err := f.Store.AddItems(ctx, src.ID, items, time.Now())
 	if err != nil {
@@ -200,6 +203,21 @@ func (f *Fetcher) fetchOne(ctx context.Context, src store.Source) (int, error) {
 	return n, f.Store.RecordFetch(ctx, src.ID, store.FetchResult{
 		At: time.Now(), ETag: resp.Header.Get("ETag"), LastModified: resp.Header.Get("Last-Modified"),
 	})
+}
+
+const maxMentorItems = 500
+
+// mediaDescription reads <media:group><media:description>, where YouTube
+// feeds keep a video's description.
+func mediaDescription(it *gofeed.Item) string {
+	for _, g := range it.Extensions["media"]["group"] {
+		for _, d := range g.Children["description"] {
+			if d.Value != "" {
+				return d.Value
+			}
+		}
+	}
+	return ""
 }
 
 var (
@@ -279,6 +297,9 @@ func Normalize(feed *gofeed.Feed, feedURL string, now time.Time) []store.NewItem
 		summary := it.Description
 		if summary == "" {
 			summary = it.Content
+		}
+		if summary == "" {
+			summary = mediaDescription(it)
 		}
 		pub := now
 		switch {

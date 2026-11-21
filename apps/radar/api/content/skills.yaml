@@ -1,0 +1,123 @@
+# Radar skill map: topics grouped into areas, with "learn first" edges
+# (requires). Keywords drive the rule-based tagger (case-insensitive,
+# whole-word-ish match on title + summary).
+areas:
+  - { id: foundations, name: Foundations }
+  - { id: offense, name: Offense }
+  - { id: ai-security, name: AI security }
+  - { id: defense, name: Defense }
+  - { id: ai-swe, name: AI-era engineering }
+
+topics:
+  # Foundations
+  - id: linux
+    name: Linux & the shell
+    area: foundations
+    keywords: [linux, shell, bash, zsh, terminal, command line, coreutils, permissions, tmux]
+  - id: computing
+    name: Computer architecture & assembly
+    area: foundations
+    requires: [linux]
+    keywords: [assembly, x86, x86-64, arm64, registers, syscall, cpu, instruction set, endianness]
+  - id: c-memory
+    name: C & memory
+    area: foundations
+    requires: [computing]
+    keywords: [c programming, pointers, stack frame, heap, malloc, memory layout, undefined behavior]
+  - id: networking
+    name: Networks & the web
+    area: foundations
+    keywords: [tcp, http, dns, tls, network, packet, socket, proxy, curl]
+  - id: cryptography
+    name: Applied cryptography
+    area: foundations
+    keywords: [cryptography, encryption, aes, rsa, hash, hmac, signature, tls certificate]
+  - id: ml-fundamentals
+    name: How ML models work
+    area: foundations
+    keywords: [neural network, machine learning, deep learning, training data, gradient, classifier, transformer]
+  # Offense
+  - id: web-security
+    name: Web security
+    area: offense
+    requires: [networking]
+    keywords: [xss, sql injection, sqli, csrf, ssrf, web vulnerability, owasp top 10, idor, authentication bypass]
+  - id: reverse-engineering
+    name: Reverse engineering
+    area: offense
+    requires: [computing]
+    keywords: [reverse engineering, disassembly, decompile, ghidra, ida pro, binary ninja, gdb]
+  - id: binary-exploitation
+    name: Binary exploitation
+    area: offense
+    requires: [c-memory, reverse-engineering]
+    keywords: [buffer overflow, stack overflow, memory corruption, rop, return oriented programming, shellcode, use-after-free, heap exploitation, type confusion, out-of-bounds write, format string]
+  - id: vulnerabilities
+    name: Vulnerabilities & CVEs
+    area: offense
+    keywords: [zero-day, 0-day, n-day, rce, remote code execution, cve, actively exploited, exploited in the wild, patch tuesday, vulnerability, vulnerabilities, flaw, flaws, exploit, exploits]
+  # AI security
+  - id: llm-fundamentals
+    name: How LLM apps work
+    area: ai-security
+    keywords: [llm, large language model, chatbot, gpt, claude, gemini, tokens, system prompt, rag]
+  - id: prompt-injection
+    name: Prompt injection
+    area: ai-security
+    requires: [llm-fundamentals]
+    keywords: [prompt injection, indirect prompt injection, jailbreak, hidden instructions, ascii smuggling, unicode tags]
+  - id: data-exfiltration
+    name: LLM data exfiltration
+    area: ai-security
+    requires: [prompt-injection]
+    keywords: [exfiltration, data exfil, markdown image, data leak, dns exfil, spaiware]
+  - id: agent-security
+    name: Agent & tool security
+    area: ai-security
+    requires: [prompt-injection]
+    keywords: [ai agent security, agent security, agent hijacking, computer use, mcp, model context protocol, tool poisoning, tool call, confused deputy, lethal trifecta, zombai, sandbox escape]
+  - id: adversarial-ml
+    name: Adversarial ML
+    area: ai-security
+    requires: [ml-fundamentals]
+    keywords: [adversarial example, adversarial machine learning, evasion attack, model stealing, model extraction, robustness]
+  - id: data-poisoning
+    name: Data poisoning & backdoors
+    area: ai-security
+    requires: [ml-fundamentals]
+    keywords: [data poisoning, model poisoning, poisoned model, poisoned dataset, backdoored model, model backdoor, trojan model, pickle, sleeper agent, training data attack]
+  # Defense
+  - id: threat-modeling
+    name: Threat modeling & secure design
+    area: defense
+    keywords: [threat model, threat modeling, stride, attack tree, security design review, secure by design]
+  - id: malware-analysis
+    name: Malware analysis
+    area: defense
+    requires: [reverse-engineering]
+    keywords: [malware, ransomware, infostealer, loader, c2, command and control, payload, phishing]
+  - id: detection-engineering
+    name: Detection engineering & response
+    area: defense
+    requires: [networking]
+    keywords: [detection, sigma, siem, edr, threat hunting, incident response, att&ck, yara, ioc]
+  # AI-era engineering
+  - id: agentic-engineering
+    name: Working with coding agents
+    area: ai-swe
+    keywords: [coding agent, coding agents, claude code, cursor ide, github copilot, codex cli, agentic coding, agentic engineering, agentic software development, ai-native engineering, vibe coding, ai pair programming]
+  - id: verification
+    name: Guardrails & verification
+    area: ai-swe
+    requires: [agentic-engineering]
+    keywords: [lint rule, linter, eslint, static analysis, type system, guardrail, guardrails, test suite, unit tests, property-based testing, formal verification, verification loop]
+  - id: context-engineering
+    name: Context engineering
+    area: ai-swe
+    requires: [agentic-engineering]
+    keywords: [context engineering, context window, claude.md, agents.md, prompt design, tool design, agent skills, compaction]
+  - id: evals
+    name: Evals for AI systems
+    area: ai-swe
+    requires: [agentic-engineering]
+    keywords: [eval, evals, llm judge, llm-as-a-judge, error analysis, benchmark, benchmarks, evaluation harness]
