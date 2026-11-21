@@ -60,6 +60,42 @@ var migrations = []string{
 		PRIMARY KEY (item_id, topic)
 	);
 	CREATE INDEX item_topics_topic ON item_topics (topic, item_id);`,
+	// 3: learning state (see internal/engine). Chapters are "<track>/<chapter>".
+	`CREATE TABLE progress (
+		ref     TEXT PRIMARY KEY,
+		status  TEXT NOT NULL,
+		at      INTEGER NOT NULL,
+		minutes INTEGER NOT NULL DEFAULT 0,
+		rating  TEXT NOT NULL DEFAULT '',
+		worth   INTEGER
+	);
+	CREATE TABLE chapter_state (
+		chapter      TEXT PRIMARY KEY,
+		started_at   INTEGER,
+		completed_at INTEGER,
+		outcomes     TEXT NOT NULL DEFAULT '[]',
+		rating       TEXT NOT NULL DEFAULT '',
+		worth        INTEGER,
+		snoozed_at   INTEGER NOT NULL DEFAULT -1
+	);
+	CREATE TABLE topic_state (
+		topic    TEXT PRIMARY KEY,
+		theta    REAL NOT NULL,
+		n        INTEGER NOT NULL,
+		assessed INTEGER NOT NULL,
+		alpha    REAL NOT NULL,
+		beta     REAL NOT NULL,
+		obs      TEXT NOT NULL DEFAULT '[]'
+	);
+	CREATE TABLE track_interest (track TEXT PRIMARY KEY, alpha REAL NOT NULL, beta REAL NOT NULL);
+	CREATE TABLE extras (
+		chapter TEXT NOT NULL,
+		ref     TEXT NOT NULL,
+		after   TEXT NOT NULL,
+		reason  TEXT NOT NULL,
+		at      INTEGER NOT NULL,
+		PRIMARY KEY (chapter, ref)
+	);`,
 }
 
 type Store struct{ db *sql.DB }

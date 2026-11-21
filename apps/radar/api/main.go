@@ -11,7 +11,10 @@ import (
 	"path/filepath"
 	"time"
 
+	_ "time/tzdata" // the image has no zoneinfo; the weekly goal needs the learner's zone
+
 	"hub.localhost/apps/radar/api/content"
+	"hub.localhost/apps/radar/api/internal/engine"
 	"hub.localhost/apps/radar/api/internal/fetch"
 	"hub.localhost/apps/radar/api/internal/store"
 	"hub.localhost/apps/radar/api/internal/tagger"
@@ -80,6 +83,7 @@ func run(app *appkit.App) error {
 	}()
 
 	(&api{store: st, fetcher: f, categories: srcs.Categories, curriculum: cur, window: window}).routes(app.Mux)
+	(&learning{store: st, eng: engine.New(cur), now: time.Now}).routes(app.Mux)
 	ui, _ := fs.Sub(uiFS, "ui/dist")
 	app.Mux.Handle("/", appkit.SPA(ui))
 	return app.Run()
