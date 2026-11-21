@@ -1,0 +1,19 @@
+{
+  "name": "finance",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "tags": ["scope:app", "app:finance"],
+  "implicitDependencies": ["finance-api", "@hub/finance-web"],
+  "targets": {
+    "validate": {
+      "description": "Build, start, health-check and tear down a throwaway instance (hub validate).",
+      "command": "go run ./platform/core/cmd/hub validate finance",
+      "cache": false
+    },
+    "docker-build": {
+      "description": "Build the app image the way the core does.",
+      "command": "docker compose -p hub-finance -f apps/finance/compose.yaml build",
+      "cache": false
+    }
+  }
+}

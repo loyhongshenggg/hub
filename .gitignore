@@ -55,4 +55,6 @@ vitest.config.*.timestamp*
 # app UI builds embedded into app binaries
 /apps/*/api/ui/dist/
 /apps/*/api/tmp-data/
+# per-app secrets read by docker compose (e.g. ANTHROPIC_API_KEY)
+/apps/*/.env
 out-tsc

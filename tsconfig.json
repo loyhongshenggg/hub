@@ -23,6 +23,9 @@
     },
     {
       "path": "./apps/radar/web"
+    },
+    {
+      "path": "./apps/finance/web"
     }
   ]
 }

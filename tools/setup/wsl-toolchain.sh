@@ -16,6 +16,8 @@ step "1/5 apt base packages"
 apt-get update -q
 apt-get upgrade -yq
 apt-get install -yq ca-certificates curl git jq unzip xz-utils build-essential
+# Finance app (Dev mode): render statement PDFs and OCR them.
+apt-get install -yq poppler-utils tesseract-ocr tesseract-ocr-eng
 
 step "2/5 Go (latest stable from go.dev, sha256-verified)"
 GO_JSON="$(curl -fsSL 'https://go.dev/dl/?mode=json')"

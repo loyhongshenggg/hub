@@ -1,0 +1,79 @@
+@import 'tailwindcss';
+@import '@hub/ui-kit/theme.css';
+
+/*
+ * Chart colours: the validated categorical palette (dataviz reference
+ * palette, slots 1–6 in fixed order) checked against the hub card surfaces
+ * (#ffffff light, #16181d dark). One slot per category *group*; "Fees &
+ * other" is neutral. Light slots 3–5 sit below 3:1, so every chart that
+ * uses them has a legend and a table view.
+ */
+:root {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-0: #a3a29c;
+  --seq: #2a78d6; /* single-hue magnitude (ranked bars, meters) */
+  --seq-track: #e8eef8;
+  --good: #0ca30c;
+  --warn: #c98500;
+  --bad: #d03b3b;
+  --dur-fast: 120ms;
+  --dur-base: 240ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+}
+.dark {
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #0ca30c;
+  --series-0: #6b6a65;
+  --seq: #3987e5;
+  --seq-track: #22272f;
+  --good: #0ca30c;
+  --warn: #fab219;
+  --bad: #e66767;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Grow bars and meters in on first paint. */
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+.grow-x {
+  transform-origin: left;
+  animation: grow-x var(--dur-base) var(--ease-out) both;
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.fade-up {
+  animation: fade-up var(--dur-base) var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Container queries: the hub tab can be narrow. */
+.cq {
+  container-type: inline-size;
+}

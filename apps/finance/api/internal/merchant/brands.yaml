@@ -1,0 +1,176 @@
+# Singapore merchants as they appear on card statements.
+#
+# Matching works on the "squashed" descriptor (letters and digits only, upper
+# case): `prefix` = the processor/platform prefix before * / _ (FP*, GRAB*),
+# `starts` = the merchant name starts with it, `contains` = anywhere in the
+# raw descriptor (use ≥ 5 characters), `exact` = the whole name.
+# `check: true` flags entries the user should confirm (e.g. Grab: ride or food).
+# Order matters: the first match wins.
+brands:
+  # --- platforms & delivery
+  - { name: foodpanda, category: delivery, prefix: [FP], contains: [FOODPANDA] }
+  - { name: Deliveroo, category: delivery, contains: [DELIVEROO] }
+  - { name: GrabFood, category: delivery, contains: [GRABFOOD] }
+  - { name: GrabMart, category: groceries, contains: [GRABMART] }
+  - { name: Grab, category: rides, check: true, prefix: [GRAB], starts: [GRAB] }
+  - { name: Gojek, category: rides, contains: [GOJEK] }
+  - { name: TADA, category: rides, starts: [TADA] }
+  - { name: Ryde, category: rides, starts: [RYDE] }
+  - { name: CDG Zig, category: rides, contains: [COMFORTDELGRO, CDGTAXI, CDGZIG, COMFORTTAXI, CITYCAB] }
+  - { name: Amazon Prime, category: subscriptions, starts: [AMZNPRIME, AMAZONPRIME, PRIMEVIDEO] }
+  - { name: Amazon, category: shopping, prefix: [AMZN, AMAZON MAR, AMAZON], starts: [AMAZON, AMZN] }
+  - { name: Shopee, category: shopping, contains: [SHOPEE] }
+  - { name: Lazada, category: shopping, contains: [LAZADA] }
+  - { name: Taobao, category: shopping, contains: [TAOBAO] }
+  - { name: Qoo10, category: shopping, contains: [QOO10] }
+  - { name: Temu, category: shopping, starts: [TEMU] }
+  - { name: AliExpress, category: shopping, contains: [ALIEXPRESS] }
+  - { name: Carousell, category: shopping, contains: [CAROUSELL] }
+
+  # --- groceries
+  - { name: FairPrice, category: groceries, contains: [FAIRPRICE, NTUCFP] }
+  - { name: CS Fresh, category: groceries, starts: [CSFRESH] }
+  - { name: Cold Storage, category: groceries, contains: [COLDSTORAGE] }
+  - { name: Giant, category: groceries, starts: [GIANTHYPER, GIANTSUPER], exact: [GIANT] }
+  - { name: Sheng Siong, category: groceries, contains: [SHENGSIONG] }
+  - { name: Don Don Donki, category: groceries, contains: [DONDONDONKI, DONKI] }
+  - { name: RedMart, category: groceries, contains: [REDMART] }
+  - { name: Prime Supermarket, category: groceries, starts: [PRIMESUPERMARKET] }
+  - { name: 7-Eleven, category: groceries, contains: [7ELEVEN, SEVENELEVEN] }
+  - { name: Cheers, category: groceries, starts: [CHEERS] }
+  - { name: Hao Mart, category: groceries, starts: [HAOMART] }
+  - { name: Scoop Wholefoods, category: groceries, starts: [SCOOPWHOLEFOODS] }
+
+  # --- food & drink
+  - { name: Kopitiam, category: dining, starts: [KOPITIAM] }
+  - { name: Koufu, category: dining, starts: [KOUFU] }
+  - { name: Food Republic, category: dining, starts: [FOODREPUBLIC] }
+  - { name: Food Junction, category: dining, starts: [FOODJUNCTION] }
+  - { name: Toast Box, category: dining, starts: [TOASTBOX] }
+  - { name: Ya Kun, category: dining, starts: [YAKUN] }
+  - { name: Starbucks, category: dining, starts: [STARBUCKS] }
+  - { name: Coffee Bean, category: dining, starts: [COFFEEBEAN] }
+  - { name: McDonald's, category: dining, starts: [MCDONALD, MCD] }
+  - { name: KFC, category: dining, starts: [KFC] }
+  - { name: Burger King, category: dining, starts: [BURGERKING] }
+  - { name: Jollibee, category: dining, starts: [JOLLIBEE] }
+  - { name: MOS Burger, category: dining, starts: [MOSBURGER] }
+  - { name: Domino's, category: dining, starts: [DOMINO] }
+  - { name: Pizza Hut, category: dining, starts: [PIZZAHUT] }
+  - { name: Subway, category: dining, exact: [SUBWAY], starts: [SUBWAYSANDWICH] }
+  - { name: Saizeriya, category: dining, starts: [SAIZERIYA] }
+  - { name: Din Tai Fung, category: dining, starts: [DINTAIFUNG] }
+  - { name: Song Fa Bak Kut Teh, category: dining, starts: [SONGFA] }
+  - { name: Four Leaves, category: dining, starts: [FOURLEAVES] }
+  - { name: BreadTalk, category: dining, starts: [BREADTALK] }
+  - { name: Old Chang Kee, category: dining, starts: [OLDCHANGKEE] }
+  - { name: Sushiro, category: dining, starts: [SUSHIRO] }
+  - { name: Genki Sushi, category: dining, starts: [GENKISUSHI] }
+  - { name: Haidilao, category: dining, starts: [HAIDILAO] }
+  - { name: 328 Katong Laksa, category: dining, starts: [328KATONG] }
+  - { name: HEYTEA, category: dining, starts: [HEYTEA] }
+  - { name: LiHO, category: dining, starts: [LIHO] }
+  - { name: KOI Thé, category: dining, starts: [KOITHE], exact: [KOI] }
+  - { name: Gong Cha, category: dining, starts: [GONGCHA] }
+  - { name: CHAGEE, category: dining, starts: [CHAGEE] }
+  - { name: Luckin Coffee, category: dining, starts: [LUCKIN] }
+  - { name: Mr Bean, category: dining, starts: [MRBEAN] }
+
+  # --- bills, telco, utilities
+  - { name: Singtel, category: bills, starts: [SINGTEL] }
+  - { name: StarHub, category: bills, starts: [STARHUB] }
+  - { name: M1, category: bills, exact: [M1], starts: [M1LIMITED, M1SHOP, M1MAXX] }
+  - { name: Circles.Life, category: bills, starts: [CIRCLES] }
+  - { name: Eight, category: bills, starts: [EIGHTTELECOM] }
+  - { name: GOMO, category: bills, starts: [GOMO] }
+  - { name: giga, category: bills, starts: [GIGA] }
+  - { name: SIMBA, category: bills, starts: [SIMBA] }
+  - { name: MyRepublic, category: bills, starts: [MYREPUBLIC] }
+  - { name: SP Group, category: bills, starts: [SPSERVICES, SPGROUP, SPDIGITAL] }
+  - { name: Senoko Energy, category: bills, starts: [SENOKO] }
+  - { name: Geneco, category: bills, starts: [GENECO] }
+
+  # --- subscriptions & digital
+  - { name: Netflix, category: subscriptions, contains: [NETFLIX] }
+  - { name: Spotify, category: subscriptions, contains: [SPOTIFY] }
+  - { name: Disney+, category: subscriptions, contains: [DISNEYPLUS] }
+  - { name: YouTube Premium, category: subscriptions, contains: [YOUTUBE] }
+  - { name: Apple, category: subscriptions, contains: [APPLECOMBILL, APPLECOM] }
+  - { name: Google, category: subscriptions, starts: [GOOGLE] }
+  - { name: OpenAI, category: subscriptions, contains: [OPENAI, CHATGPT] }
+  - { name: Anthropic, category: subscriptions, contains: [ANTHROPIC, CLAUDEAI] }
+  - { name: Microsoft, category: subscriptions, starts: [MICROSOFT, MSFT] }
+  - { name: Steam, category: entertainment, starts: [STEAMPURCHASE, STEAMGAMES], contains: [STEAMPOWERED, STEAMGAMES, STEAMPURCHASE] }
+  - { name: PlayStation, category: entertainment, contains: [PLAYSTATION] }
+  - { name: Nintendo, category: entertainment, contains: [NINTENDO] }
+  - { name: Golden Village, category: entertainment, starts: [GOLDENVILLAGE, GVCINEMA] }
+  - { name: Shaw Theatres, category: entertainment, starts: [SHAWTHEATRE] }
+
+  # --- insurance
+  - { name: Prudential, category: insurance, starts: [PRUDENTIAL] }
+  - { name: Singlife, category: insurance, starts: [SINGLIFE] }
+  - { name: AIA, category: insurance, exact: [AIA], starts: [AIASINGAPORE] }
+  - { name: Great Eastern, category: insurance, starts: [GREATEASTERN] }
+  - { name: Income Insurance, category: insurance, starts: [INCOMEINSURANCE, NTUCINCOME] }
+  - { name: FWD, category: insurance, starts: [FWDSINGAPORE], exact: [FWD] }
+  - { name: Manulife, category: insurance, starts: [MANULIFE] }
+  - { name: HSBC Life, category: insurance, starts: [HSBCLIFE] }
+  - { name: Tokio Marine, category: insurance, starts: [TOKIOMARINE] }
+
+  # --- shopping & home
+  - { name: Uniqlo, category: shopping, starts: [UNIQLO] }
+  - { name: Daiso, category: shopping, starts: [DAISO] }
+  - { name: Mustafa, category: shopping, starts: [MUSTAFA] }
+  - { name: Popular, category: shopping, starts: [POPULARBOOK] }
+  - { name: Courts, category: home, starts: [COURTS] }
+  - { name: Harvey Norman, category: home, starts: [HARVEYNORMAN] }
+  - { name: Challenger, category: shopping, starts: [CHALLENGER] }
+  - { name: Best Denki, category: home, starts: [BESTDENKI] }
+  - { name: IKEA, category: home, starts: [IKEA] }
+  - { name: Levoit, category: home, starts: [LEVOIT] }
+  - { name: Decathlon, category: leisure, starts: [DECATHLON] }
+
+  # --- health & personal care
+  - { name: Watsons, category: personal, starts: [WATSONS] }
+  - { name: Guardian, category: personal, starts: [GUARDIAN] }
+  - { name: Raffles Medical, category: health, starts: [RAFFLESMEDICAL] }
+  - { name: Q&M Dental, category: health, starts: [QMDENTAL, QANDMDENTAL] }
+
+  # --- leisure, travel, car
+  - { name: SAFRA, category: leisure, starts: [SAFRA] }
+  - { name: ActiveSG, category: leisure, starts: [ACTIVESG] }
+  - { name: Anytime Fitness, category: leisure, starts: [ANYTIMEFITNESS] }
+  - { name: ClassPass, category: leisure, contains: [CLASSPASS] }
+  - { name: Klook, category: travel, contains: [KLOOK] }
+  - { name: Agoda, category: travel, contains: [AGODA] }
+  - { name: Booking.com, category: travel, contains: [BOOKINGCOM] }
+  - { name: Trip.com, category: travel, contains: [TRIPCOM] }
+  - { name: Airbnb, category: travel, contains: [AIRBNB] }
+  - { name: Singapore Airlines, category: travel, starts: [SINGAPOREAIR, SIAAIR] }
+  - { name: Scoot, category: travel, starts: [SCOOT, FLYSCOOT] }
+  - { name: Jetstar, category: travel, starts: [JETSTAR] }
+  - { name: AirAsia, category: travel, starts: [AIRASIA] }
+  - { name: Shell, category: car, starts: [SHELL] }
+  - { name: Esso, category: car, starts: [ESSO] }
+  - { name: Caltex, category: car, starts: [CALTEX] }
+  - { name: SPC, category: car, exact: [SPC], starts: [SPCSERVICE] }
+  - { name: Parking.sg, category: car, contains: [PARKINGSG] }
+
+# Generic words: the category is clear even when the merchant isn't. The
+# display name stays the cleaned descriptor. Lower confidence than brands.
+keywords:
+  - { category: health, words: [DENTAL, DENTIST, CLINIC, MEDICAL, POLYCLINIC, PHARMACY, HOSPITAL, OPTICAL, PHYSIO, CHIRO] }
+  - { category: insurance, words: [INSURANCE, ASSURANCE] }
+  - { category: bills, words: [TELECOM, MOBILE PLAN, BROADBAND, UTILITIES] }
+  - { category: dining, words: [KITCHEN, RESTAURANT, CAFE, COFFEE, BAKERY, NOODLE, LAKSA, BAK KUT TEH, CHICKEN RICE, SUSHI, RAMEN, PIZZA, BURGER, STEAK, CUISINE, CUISI, EATERY, BISTRO, HAWKER, FOOD COURT, DIM SUM, HOTPOT, BBQ, TEA HOUSE, LAO MIAN, CANTEEN, DELI, FOOD, F&B, CATERING, YOGURT, DESSERT, ICE CREAM, GELATO] }
+  - { category: groceries, words: [SUPERMARKET, MINIMART, MINI MART, GROCER, FRUITS, BUTCHER] }
+  - { category: personal, words: [SALON, BARBER, HAIR, BEAUTY, NAIL, SPA, MASSAGE, COSMETIC] }
+  - { category: rides, words: [TAXI, CAB] }
+  - { category: transport, words: [TRANSPORT, BUS SERVICE] }
+  - { category: travel, words: [HOTEL, AIRLINE, AIRWAYS, RESORT, HOSTEL, TRAVEL] }
+  - { category: education, words: [SCHOOL, ACADEMY, TUITION, COURSE, UDEMY, COURSERA, LEARNING, BOOKSTORE] }
+  - { category: leisure, words: [FITNESS, GYM, YOGA, PILATES, SPORTS, CLIMB, SWIM] }
+  - { category: gifts, words: [FLORIST, FLOWER, CHARITY, DONATION, FOUNDATION] }
+  - { category: home, words: [FURNITURE, HARDWARE, HOME, APPLIANCE, AIRCON, PLUMB] }
+  - { category: car, words: [PETROL, CARPARK, CAR PARK, CAR WASH, MOTOR, WORKSHOP] }
+  - { category: entertainment, words: [CINEMA, GAMES, ARCADE, KARAOKE, KTV, CONCERT, TICKET] }

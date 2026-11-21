@@ -1,0 +1,16 @@
+# The app's own services; the hub core adds the network, labels and HUB_* env
+# at start. No host ports: traffic arrives through the gateway.
+services:
+  web:
+    build:
+      context: ../.. # repo root, so the build can use libs/
+      dockerfile: apps/finance/Dockerfile
+    environment:
+      # Optional: Claude features can also take the key from Settings.
+      - ANTHROPIC_API_KEY
+      - FINANCE_TZ=Asia/Singapore
+    volumes:
+      - data:/data # database + imported statement PDFs
+
+volumes:
+  data:

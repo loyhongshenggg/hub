@@ -1,0 +1,31 @@
+{
+  "name": "@hub/finance-web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "UI of the Finance hub app (built into the Go binary).",
+  "dependencies": {
+    "@hub/app-sdk": "workspace:*",
+    "@hub/ui-kit": "workspace:*",
+    "@tanstack/react-query": "5.108.2",
+    "lucide-react": "1.77.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "tailwindcss": "4.3.5",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.0"
+  },
+  "nx": {
+    "tags": [
+      "scope:app",
+      "app:finance",
+      "lang:ts"
+    ]
+  }
+}

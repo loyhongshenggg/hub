@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../../libs/manifest/schema/v1.schema.json
+manifestVersion: 1
+id: finance
+name: 'Finance'
+description: 'Goals, spending insights and statement import for Singapore'
+icon: ./icon.svg
+runtime:
+  driver: docker
+  compose: ./compose.yaml
+  service: web
+  port: 8080
+health:
+  path: /healthz
+  startTimeout: 30s
+ui:
+  path: /
+  keepAlive: true
+autoStart: false
+
+# Dev mode (power menu → "Dev mode"): the core runs these on the host with
+# live reload instead of the container, and routes the app's URL to `web`.
+dev:
+  route: web
+  processes:
+    - name: api
+      dir: api
+      command: go run .
+      # Statement import needs `pdftoppm` + `tesseract` on the host in Dev
+      # mode (tools/setup/wsl-toolchain.sh installs them).
+      watch: ['*.go', go.mod, '*.yaml'] # restart the API when Go files or brands.yaml change
+    - name: web
+      dir: web
+      command: pnpm exec vite # hot reload; proxies /api and /healthz to the API
+

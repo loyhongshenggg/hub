@@ -1,6 +1,7 @@
 go 1.27.4
 
 use (
+	./apps/finance/api
 	./apps/hello/api
 	./apps/radar/api
 	./libs/go-appkit
