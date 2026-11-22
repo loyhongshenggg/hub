@@ -36,6 +36,7 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
 - ESLint 9, not 10: eslint-plugin-react / jsx-a11y / import don't support 10 yet (checked 2026-11-20). ESLint 9 is marked deprecated upstream — move to 10 once those plugins support it.
 - After adding/removing a TS project or workspace dep: `pnpm install && pnpm nx sync` (TS project references), or Nx tasks stop with "workspace is out of sync".
 - Apps that need system tools (finance: poppler + Tesseract for OCR) use a `debian:trixie-slim` runtime instead of distroless; Dev mode needs the same tools on the host (`tools/setup/wsl-toolchain.sh`).
+- Charts: load the dataviz skill only when building a new chart type. For progress bars, rings, stat tiles and edits to existing charts, follow the app's own `charts.tsx` / `ui.tsx` patterns without it.
 - Manifest schema: `libs/manifest/schema/v<N>.schema.json` is the source of truth. TS types are generated (`codegen` target, runs before build/typecheck); Go types are hand-written and a test fails if they drift.
 
 ## Status
