@@ -58,7 +58,7 @@ Apps keep running when the core stops and are picked up again on the next start.
 A release is a WSL distribution file with the hub and a chosen set of apps ([ADR-0011](docs/adr/0011-releases.md)). `releases/<name>.env` lists what ships (Finance: `releases/finance.env`).
 
 ```bash
-RELEASE_REPO=<owner>/hs-hub tools/release/build.sh finance 0.1.0   # local build → dist/release/finance/
+RELEASE_REPO=loyhongshenggg/hub tools/release/build.sh finance 0.1.0   # local build → dist/release/finance/
 git tag finance-v0.1.0 && git push origin finance-v0.1.0           # GitHub Actions builds and publishes it
 ```
 

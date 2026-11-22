@@ -66,5 +66,11 @@ jobs:
 
           **Verify the download:** \`gh attestation verify $REL.wsl --repo $GITHUB_REPOSITORY\`, or compare with \`SHA256SUMS\`.
           NOTES
-          gh release create "$GITHUB_REF_NAME" "$d/$REL.wsl" "$d/$REL-update.tar.gz" "$d/SHA256SUMS" \
-            --title "$TITLE $VERSION" --notes-file notes.md
+          files=("$d/$REL.wsl" "$d/$REL-update.tar.gz" "$d/SHA256SUMS")
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            # Re-run for the same tag (e.g. the tag was moved): replace the files.
+            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
+            gh release edit "$GITHUB_REF_NAME" --title "$TITLE $VERSION" --notes-file notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" --title "$TITLE $VERSION" --notes-file notes.md
+          fi
