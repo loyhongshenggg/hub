@@ -7,6 +7,7 @@ import { api } from './api';
 import { GoalsPage } from './goals';
 import { ImportPage } from './import';
 import { OverviewPage } from './overview';
+import { PageActive } from './page';
 import { keys, queryClient, useStatus } from './queries';
 import { href, pages, parse, useRoute, type Page, type Route } from './router';
 import { SettingsPage } from './settings';
@@ -43,7 +44,7 @@ function Shell({ hub }: { hub: HubClient }) {
 
   return (
     <div className="cq min-h-dvh">
-      <header className="sticky top-0 z-30 border-b bg-background/85 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b bg-background">
         <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 sm:px-5">
           <a href={href('overview')} className="mr-2 flex items-center gap-2 py-3 font-semibold tracking-tight">
             <img src="/icon.svg" alt="" className="size-6" />
@@ -92,15 +93,19 @@ function Shell({ hub }: { hub: HubClient }) {
 }
 
 /**
- * Every page stays mounted once rendered, hidden in an <Activity>, so going
- * back to a tab only unhides it (state and scroll position kept). Once the
- * first page is up and the browser is idle, the other pages' data is
- * prefetched and they are pre-rendered hidden, at low priority, so even the
- * first visit to a tab is instant.
+ * Every page stays mounted once rendered, so going back to a tab keeps its
+ * state and scroll position. Once the first page is up and the browser is
+ * idle, the other pages' data is prefetched and they are pre-rendered in a
+ * hidden <Activity> at low priority, so even a first visit is instant.
+ * A page that has been shown is then hidden with content-visibility (not
+ * display:none): its layout is kept, so switching back only repaints it —
+ * which matters on large high-DPI screens.
  */
 function Pages({ shown }: { shown: Route }) {
   const [routes, setRoutes] = useState<Partial<Record<Page, Route>>>(() => ({ [shown.page]: shown }));
   if (routes[shown.page] !== shown) setRoutes({ ...routes, [shown.page]: shown });
+  const [seen, setSeen] = useState<ReadonlySet<Page>>(() => new Set([shown.page]));
+  if (!seen.has(shown.page)) setSeen(new Set(seen).add(shown.page));
   const [warm, setWarm] = useState(false);
   useEffect(
     () =>
@@ -128,11 +133,19 @@ function Pages({ shown }: { shown: Route }) {
 
   return pages.map((p) => {
     const r = routes[p] ?? (warm ? home[p] : undefined);
+    const active = p === shown.page;
     return r ? (
-      <Activity key={p} mode={p === shown.page ? 'visible' : 'hidden'}>
-        <div data-page={p}>
-          <PageView route={r} />
-        </div>
+      <Activity key={p} mode={seen.has(p) ? 'visible' : 'hidden'}>
+        <PageActive value={active}>
+          <div
+            data-page={p}
+            className={active ? undefined : '[content-visibility:hidden]'}
+            inert={!active}
+            aria-hidden={active ? undefined : true}
+          >
+            <PageView route={r} />
+          </div>
+        </PageActive>
       </Activity>
     ) : null;
   });

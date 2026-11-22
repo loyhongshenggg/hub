@@ -126,6 +126,32 @@ export function connect(opts: ConnectOptions = {}): HubClient {
 }
 
 /**
+ * Sets `class="dark"` and `color-scheme` on an element (default <html>).
+ * Colour transitions are paused for the switch itself: otherwise every
+ * button and link animates its new colours at once, which is slow on large
+ * high-DPI screens. Does nothing when the theme is already applied.
+ */
+export function applyThemeClass(
+  t: Theme,
+  el: HTMLElement = document.documentElement,
+): void {
+  const dark = t === 'dark';
+  if (el.classList.contains('dark') === dark && el.style.colorScheme === t) {
+    return;
+  }
+  const doc = el.ownerDocument;
+  const pause = doc.createElement('style');
+  pause.textContent =
+    '*,*::before,*::after{transition:none!important}';
+  doc.head.appendChild(pause);
+  el.classList.toggle('dark', dark);
+  el.style.colorScheme = t;
+  // Apply the new colours now, while transitions are off.
+  void doc.defaultView?.getComputedStyle(doc.body).color;
+  setTimeout(() => pause.remove(), 0);
+}
+
+/**
  * Keeps `class="dark"` and `color-scheme` on an element (default <html>) in
  * sync with the hub theme — what @hub/ui-kit's tokens expect.
  */
@@ -133,8 +159,5 @@ export function syncThemeClass(
   hub: HubClient,
   el: HTMLElement = document.documentElement,
 ): () => void {
-  return hub.onTheme((t) => {
-    el.classList.toggle('dark', t === 'dark');
-    el.style.colorScheme = t;
-  });
+  return hub.onTheme((t) => applyThemeClass(t, el));
 }

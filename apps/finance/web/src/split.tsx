@@ -1,10 +1,11 @@
 // Splitting a cost you paid: everyone else's share is money owed to you,
 // and only your share counts as your spending (Splitwise-style shares; the
 // card amount itself never changes, so statements still reconcile).
-import { Button, cn, Input, Sheet, SheetContent, SheetDescription, SheetTitle } from '@hub/ui-kit';
+import { Button, cn, Input, SheetContent, SheetDescription, SheetTitle } from '@hub/ui-kit';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Loader2, Plus, Users, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Sheet } from './page';
 import { api, type Person, type Share, type SplitMethod, type Txn } from './api';
 import { date, money, plural, toCents, toDollars } from './format';
 import { useInvalidateLedger } from './queries';
@@ -277,7 +278,6 @@ export function SplitEditor({ txn }: { txn: Txn }) {
 export function OwedCard() {
   const { data } = useQuery({ queryKey: ['people'], queryFn: api.people });
   const [person, setPerson] = useState<Person | null>(null);
-  useEffect(() => () => setPerson(null), []); // page hidden (app.tsx): close
   const owing = (data?.people ?? []).filter((p) => p.owed !== 0);
   if (!data || owing.length === 0) return null;
   return (

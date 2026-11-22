@@ -43,12 +43,14 @@ export function SheetContent({
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
         data-slot="sheet-overlay"
-        className="fixed inset-0 z-50 bg-black/40 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 motion-reduce:animate-none"
+        className="fixed inset-0 z-50 bg-black/40 duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-150 motion-reduce:animate-none"
       />
       <DialogPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          'fixed z-50 flex flex-col bg-background shadow-xl outline-none duration-300 ease-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-200 motion-reduce:animate-none',
+          // 200 ms in / 150 ms out; will-change puts the panel on its own
+          // layer before the slide starts, so the first frames don't stutter.
+          'fixed z-50 flex flex-col bg-background shadow-xl outline-none will-change-transform duration-200 ease-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-150 motion-reduce:animate-none',
           sides[side],
           className,
         )}

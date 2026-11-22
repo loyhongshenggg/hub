@@ -1,8 +1,9 @@
 // Side sheets: spending detail (category or merchant → entries) and the
 // transaction editor.
-import { Button, Input, Sheet, SheetContent, SheetDescription, SheetTitle, Switch } from '@hub/ui-kit';
+import { Button, Input, SheetContent, SheetDescription, SheetTitle, Switch } from '@hub/ui-kit';
 import { AlertCircle, Globe, Pencil, PenLine, RotateCcw, Trash2, Users } from 'lucide-react';
-import { memo, useEffect, useState } from 'react';
+import { memo, useState } from 'react';
+import { Sheet } from './page';
 import { api, type Kind, type Txn } from './api';
 import { RankedBars } from './charts';
 import { date, money, monthName, plural, toCents, toDollars, txnKindNames } from './format';
@@ -19,7 +20,6 @@ export interface SpendScope {
 
 export function SpendSheet({ scope, onClose }: { scope: SpendScope | null; onClose: () => void }) {
   const [edit, setEdit] = useState<Txn | null>(null);
-  useEffect(() => () => setEdit(null), []); // page hidden (app.tsx): close
   return (
     <>
       <Sheet open={!!scope} onOpenChange={(o) => !o && onClose()}>

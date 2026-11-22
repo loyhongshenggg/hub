@@ -2,6 +2,7 @@ export {
   connect,
   shellOriginFor,
   syncThemeClass,
+  applyThemeClass,
   type ConnectOptions,
   type HubClient,
 } from './client.js';

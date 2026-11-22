@@ -7,6 +7,7 @@ import {
   PROTOCOL_VERSION,
   shellOriginFor,
   syncThemeClass,
+  applyThemeClass,
 } from './index.js';
 
 describe('shellOriginFor', () => {
@@ -141,5 +142,25 @@ describe('connect', () => {
     deliver(envelope({ type: 'theme', theme: 'dark' }));
     expect(el.classList.contains('dark')).toBe(true);
     expect(el.style.colorScheme).toBe('dark');
+  });
+});
+
+describe('applyThemeClass', () => {
+  it('switches with colour transitions paused, then restores them', () => {
+    vi.useFakeTimers();
+    const el = document.documentElement;
+    el.classList.remove('dark');
+    el.style.colorScheme = 'light';
+    const styles = () => document.head.querySelectorAll('style').length;
+    const before = styles();
+    applyThemeClass('dark');
+    expect(el.classList.contains('dark')).toBe(true);
+    expect(el.style.colorScheme).toBe('dark');
+    expect(styles()).toBe(before + 1); // transitions paused for the switch
+    vi.runAllTimers();
+    expect(styles()).toBe(before);
+    applyThemeClass('dark'); // already dark: no work, nothing paused
+    expect(styles()).toBe(before);
+    vi.useRealTimers();
   });
 });

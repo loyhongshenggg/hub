@@ -1,6 +1,6 @@
 import { Button, cn } from '@hub/ui-kit';
 import { ArrowLeft, CheckCircle2, FileText, FileUp, Loader2, RefreshCw, ShieldCheck, Trash2, TriangleAlert, XCircle } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { api, type Statement, type Txn } from './api';
 import { date, money, plural } from './format';
 import { useInvalidateLedger, useStatement, useStatements, useStatus } from './queries';
@@ -174,7 +174,6 @@ function StatementDetail({ id }: { id: number }) {
   const { data, error } = useStatement(id);
   const inv = useInvalidateLedger();
   const [edit, setEdit] = useState<Txn | null>(null);
-  useEffect(() => () => setEdit(null), []); // page hidden (app.tsx): close
   const [page, setPage] = useState<number | null>(null);
   if (error) return <ErrorNote error={error} />;
   if (!data) return <Loader2 className="m-8 size-5 animate-spin text-muted-foreground" />;

@@ -33,7 +33,7 @@ describe('TabPanels', () => {
       app('off'),
     ]);
     const visible = [...container.querySelectorAll('iframe')].filter(
-      (f) => !f.hidden,
+      (f) => f.style.visibility !== 'hidden' && !f.inert,
     );
     expect(visible.map((f) => f.title)).toEqual(['Drop']);
   });

@@ -1,9 +1,10 @@
 import { Button, Input, Switch } from '@hub/ui-kit';
-import { Database, Download, KeyRound, Loader2, Map as MapIcon, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
+import { Copy, Database, Download, Gauge, KeyRound, Loader2, Map as MapIcon, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { api, type DirectorySource } from './api';
 import { relTime } from './format';
 import { keys, queryClient, useCategories, useClaude, useRules, useStatus } from './queries';
+import { runSpeedCheck } from './speedcheck';
 import { ErrorNote, Field, Meter, Section } from './ui';
 
 export function SettingsPage() {
@@ -24,7 +25,50 @@ export function SettingsPage() {
           </a>
         </Button>
       </Section>
+      <SpeedCheck />
     </div>
+  );
+}
+
+/** SpeedCheck times tab switches, the theme switch and a sheet on this computer. */
+function SpeedCheck() {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [report, setReport] = useState('');
+  const [copied, setCopied] = useState(false);
+  const run = async () => {
+    setReport('');
+    setCopied(false);
+    try {
+      setReport(await runSpeedCheck(setBusy));
+    } catch (e) {
+      setReport(`Speed check failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <Section title={<span className="flex items-center gap-2"><Gauge className="size-4 text-[var(--seq)]" /> Speed check</span>}>
+      <p className="mb-3 text-sm text-muted-foreground">
+        Feels slow? This switches through the tabs, flips the theme and opens a sheet, timing each step, then shows a report to send for a fix. It
+        holds no financial data (only timings and this computer's screen and graphics).
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" onClick={() => void run()} disabled={busy !== null}>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Gauge className="size-4" />} {busy ? 'Checking…' : 'Run speed check'}
+        </Button>
+        {busy && <span className="text-sm text-muted-foreground">{busy}</span>}
+        {report && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void navigator.clipboard.writeText(report).then(() => setCopied(true))}
+          >
+            <Copy className="size-4" /> {copied ? 'Copied' : 'Copy report'}
+          </Button>
+        )}
+      </div>
+      {report && <pre className="mt-3 max-h-80 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap">{report}</pre>}
+    </Section>
   );
 }
 

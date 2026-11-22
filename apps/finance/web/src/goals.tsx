@@ -1,6 +1,7 @@
-import { Button, cn, Input, Sheet, SheetContent, SheetDescription, SheetTitle } from '@hub/ui-kit';
+import { Button, cn, Input, SheetContent, SheetDescription, SheetTitle } from '@hub/ui-kit';
 import { Archive, Check, Flag, Loader2, Pause, PenLine, Play, Plus, Sparkles, Target, Trash2, Trophy, X } from 'lucide-react';
 import { useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
+import { Sheet } from './page';
 import { api, type Drafts, type GoalView } from './api';
 import { BalanceLine, PeriodBars } from './charts';
 import { blankGoal, GoalForm, goalFormError, type GoalDraft } from './goal-form';

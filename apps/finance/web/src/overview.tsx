@@ -13,7 +13,7 @@ import {
   TriangleAlert,
   ThumbsUp,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { Insight } from './api';
 import { PaceLine, RankedBars, TrendColumns } from './charts';
 import { date, money, monthName, plural } from './format';
@@ -29,7 +29,6 @@ export function OverviewPage({ route }: { route: Route }) {
   const { data: ov, isLoading } = useOverview(month, spread);
   const cats = useCategories();
   const [scope, setScope] = useState<SpendScope | null>(null);
-  useEffect(() => () => setScope(null), []); // page hidden (app.tsx): close
   const [allInsights, setAllInsights] = useState(false);
 
   if (isLoading || !ov) return <OverviewSkeleton />;

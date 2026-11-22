@@ -39,11 +39,15 @@ function AppFrame({ app, active }: { app: AppInfo; active: boolean }) {
   const [src] = useState(
     () => app.url + (useTabs.getState().takePath(app.id) ?? app.uiPath),
   );
+  // An inactive frame stays laid out but invisible (not display:none), so
+  // switching back only repaints it instead of laying the app out again.
   return (
     <iframe
       title={app.name}
       src={src}
-      hidden={!active}
+      style={active ? undefined : { visibility: 'hidden' }}
+      inert={!active}
+      aria-hidden={active ? undefined : true}
       data-app-id={app.id}
       data-origin={app.url}
       allow="clipboard-read; clipboard-write; fullscreen"

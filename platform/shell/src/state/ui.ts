@@ -1,3 +1,4 @@
+import { applyThemeClass } from '@hub/app-sdk';
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -35,11 +36,7 @@ export function resolvedTheme(t: Theme): 'light' | 'dark' {
 export function useApplyTheme() {
   const theme = useUI((s) => s.theme);
   useEffect(() => {
-    const apply = () =>
-      document.documentElement.classList.toggle(
-        'dark',
-        resolvedTheme(theme) === 'dark',
-      );
+    const apply = () => applyThemeClass(resolvedTheme(theme));
     apply();
     const mq = prefersDark();
     mq.addEventListener('change', apply);

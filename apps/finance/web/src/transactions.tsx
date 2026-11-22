@@ -1,6 +1,7 @@
-import { Button, cn, Input, Sheet, SheetContent, SheetTitle } from '@hub/ui-kit';
+import { Button, cn, Input, SheetContent, SheetTitle } from '@hub/ui-kit';
 import { AlertCircle, Download, Plus, Search, Target, Users, X } from 'lucide-react';
-import { useDeferredValue, useEffect, useState } from 'react';
+import { useDeferredValue, useState } from 'react';
+import { Sheet } from './page';
 import { api, type Kind, type Txn, type TxnQuery } from './api';
 import { money, monthName, plural, toCents, today, txnKindNames } from './format';
 import { useCategories, useGoals, useInvalidateLedger, useOverview, useTxns } from './queries';
@@ -37,17 +38,9 @@ export function TransactionsPage({ route }: { route: Route }) {
   const deferred = useDeferredValue(search);
   const cats = useCategories();
   const { data: ov } = useOverview();
-  const { data: txns = noTxns, isFetching } = useTxns(txnQueryFor(q, deferred));
+  const { data: txns = noTxns, isPlaceholderData } = useTxns(txnQueryFor(q, deferred));
   const [edit, setEdit] = useState<Txn | null>(null);
   const [adding, setAdding] = useState(false);
-  // The page stays mounted while hidden (app.tsx): close its sheets on leaving.
-  useEffect(
-    () => () => {
-      setEdit(null);
-      setAdding(false);
-    },
-    [],
-  );
   const set = (p: Record<string, string | boolean | undefined>) =>
     go('transactions', undefined, { month, category, kind, review, split: shared, q: search, goal: goalId, ...p }, true);
 
@@ -149,7 +142,7 @@ export function TransactionsPage({ route }: { route: Route }) {
         </p>
       )}
 
-      <div className={cn('transition-opacity', isFetching && 'opacity-70')}>
+      <div className={cn(isPlaceholderData && 'opacity-70')}>
         <TxnList txns={txns} onPick={setEdit} showCategory />
       </div>
       <TxnSheet txn={edit} onClose={() => setEdit(null)} />
