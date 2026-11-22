@@ -1,6 +1,7 @@
 package statement
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -78,7 +79,7 @@ func TestParseLedger(t *testing.T) {
 	}{
 		{"09-04", 2000, false, "", "SINGAPORE POOLS", "", false}, // a business: the merchant matcher decides
 		{"09-05", 5500, true, "transfer", "Lim Mei Ling", "From Lim Mei Ling: Photoshoot", false},
-		{"09-06", 5000, false, "payment", "AXS", "", true}, // AXS: usually a card bill
+		{"09-06", 5000, false, "payment", "AXS", "", false}, // AXS: a card bill, not spending
 		{"09-29", 300000, true, "income", "ACME PTE LTD", "Salary", false},
 		{"09-30", 100000, false, "transfer", "Own account", "Between your own accounts", false},
 		{"09-30", 30000, false, "transfer", "Lix Sixx Suxx", "To Lix Sixx Suxx: Happy Deepavali", false},
@@ -268,5 +269,116 @@ func TestSameName(t *testing.T) {
 		if got := sameName(name, "TAN AH KOW"); got != want {
 			t.Errorf("sameName(%q) = %v", name, got)
 		}
+	}
+}
+
+// A DBS-style consolidated statement (synthetic): DD/MM/YYYY dates, "TO:" /
+// "FROM:" lines, people's names masked, Balance Brought/Carried Forward on
+// every page and a "Total Balance Carried Forward" row with the totals.
+func dbsPages() []ocr.Page {
+	return []ocr.Page{
+		page(1,
+			"12:S/N: EN00000000000001|67:Consolidated Statement",
+			"12:TAN AH MEI",
+			"12:BLK 1 EXAMPLE AVENUE 1",
+			"5:Account Summary as at 31 Oct 2026",
+			"7:Current and Savings Account|72:Total: SGD Equivalent 40.00",
+			"7:Account|45:Account No.|74:Balance|86:Balance",
+			"7:DBS Savings Plus Account|45:123-4-567890|66:SGD|76:40.00|88:40.00",
+		),
+		page(2,
+			"7:DBS Savings Plus Account|74:Account No. 123-4-567890",
+			"7:Date|19:Description|56:Withdrawal|65:(-)|72:Deposit|78:(+)|82:Balance|89:(SGD)",
+			"19:Balance Brought Forward|88:100.00",
+			"7:01/10/2026|19:FAST Payment / Receipt|63:6.00|88:94.00",
+			"19:PAYNOW TRANSFER 8911289",
+			"19:TO: YX GUANGXXXX",
+			"19:PAYNOW TRANSFER NOODLES",
+			"19:OTHER",
+			"7:02/10/2026|19:FAST Payment / Receipt|61:50.00|88:44.00",
+			"19:PAYNOW TRANSFER 8002197",
+			"19:TO: LOX HOXX SHEXX",
+			"19:HL WEDDING ANGPAO",
+			"19:OTHER",
+			"7:03/10/2026|19:Point-of-Sale Transaction|63:4.00|88:40.00",
+			"19:NETS QR PAYMENT 624718052561777",
+			"19:TO: BROTHERS CHIN 703",
+			"19:Balance Carried Forward|88:40.00",
+		),
+		page(3,
+			"7:Date|19:Description|56:Withdrawal|65:(-)|72:Deposit|78:(+)|82:Balance|89:(SGD)",
+			"19:Balance Brought Forward|88:40.00",
+			"7:04/10/2026|19:FAST Payment / Receipt|75:2,000.00|88:2,040.00",
+			"19:SYFE",
+			"19:20261004SCBLSG22BRT0136927",
+			"19:INVESTMENT & SECURITIES",
+			"7:05/10/2026|19:FAST Collection|59:2,000.00|88:40.00",
+			"19:01A109A3DBAC7310A87511929DD54AA9",
+			"19:COLLECTION PAYMENT",
+			"7:06/10/2026|19:FAST Payment / Receipt|76:20.00|88:60.00",
+			"19:INCOMING PAYNOW REF 6561505",
+			"19:FROM: ONG KWEE LIAN",
+			"19:WINNIE ONG LUNCH",
+			"19:OTHER",
+			"7:07/10/2026|19:Debit Card Transaction|62:10.00|88:50.00",
+			"19:GRAB* AB2734D809BAFED3 SI SGP 28SEP",
+			"19:4628-4500-1958-5794",
+			"7:13/09/2026|19:FAST Payment / Receipt|75:119.50|88:169.50",
+			"19:OTHER",
+			"19:20260913OCBCSGSGBRT8904706",
+			"19:OTHER",
+			"7:31/10/2026|19:Interest Earned|76:0.03|88:169.53",
+			"5:4|19:4|54:4|67:4|81:4",
+			"19:Total Balance Carried Forward:|59:2,070.00|73:2,139.53|88:169.53",
+		),
+	}
+}
+
+func TestParseDBS(t *testing.T) {
+	p := Parse(dbsPages())
+	s := p.Summary
+	if s.Kind != "bank" || s.Bank != "DBS" || s.Product != "DBS Savings Plus Account" || s.Last4 != "7890" || s.Holder != "TAN AH MEI" {
+		t.Errorf("header: kind=%q bank=%q product=%q last4=%q holder=%q", s.Kind, s.Bank, s.Product, s.Last4, s.Holder)
+	}
+	if s.PeriodStart.Format("2006-01-02") != "2026-10-01" || s.PeriodEnd.Format("2006-01-02") != "2026-10-31" {
+		t.Errorf("period %v %v", s.PeriodStart, s.PeriodEnd)
+	}
+	if deref(s.PrevBalance) != 100.0 || deref(s.Total) != 169.53 || deref(s.Debits) != 2070.0 || deref(s.Credits) != 2139.53 {
+		t.Errorf("summary prev=%v total=%v out=%v in=%v", deref(s.PrevBalance), deref(s.Total), deref(s.Debits), deref(s.Credits))
+	}
+	type row struct {
+		amount      int64
+		credit      bool
+		kind, party string
+		check       bool
+	}
+	want := []row{
+		{600, false, "", "Yx Guangxxxx", true},             // a person, ≤ S$30: spending to check
+		{5000, false, "transfer", "Lox Hoxx Shexx", false}, // a person, > S$30: transfer
+		{400, false, "", "BROTHERS CHIN 703", false},       // NETS: a shop
+		{200000, true, "transfer", "Syfe", false},          // from investments
+		{200000, false, "transfer", "Direct debit", true},  // a direct debit
+		{2000, true, "transfer", "Ong Kwee Lian", false},   // from a person
+		{1000, false, "", "GRAB* AB2734D809BAFED3 SI SGP 28SEP", false},
+		{11950, true, "transfer", "Money in from OCBC", true}, // says little: never a refund
+		{3, true, "income", "Interest", false},
+	}
+	if len(p.Txns) != len(want) {
+		for _, tx := range p.Txns {
+			t.Logf("%+v", tx)
+		}
+		t.Fatalf("got %d rows", len(p.Txns))
+	}
+	for i, w := range want {
+		g := p.Txns[i]
+		if g.Amount != w.amount || g.Credit != w.credit || g.Kind != w.kind || g.Counterparty != w.party || g.Check != w.check {
+			t.Errorf("row %d = %d cr=%v kind=%q party=%q check=%v note=%q", i, g.Amount, g.Credit, g.Kind, g.Counterparty, g.Check, g.Note)
+		}
+	}
+	if !strings.HasPrefix(p.Txns[0].Note, "Noodles") || !strings.Contains(p.Txns[1].Note, "Hl Wedding Angpao") {
+		t.Errorf("messages: %q / %q", p.Txns[0].Note, p.Txns[1].Note)
+	}
+	if r := Reconcile(s, p.Txns); !r.OK || !r.SummaryOK {
+		t.Errorf("reconcile %+v", r)
 	}
 }

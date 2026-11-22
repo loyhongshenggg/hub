@@ -32,9 +32,18 @@ type ledgerCols struct {
 func findLedgerHeader(lines []line) (ledgerCols, bool) {
 	for _, l := range lines {
 		var c ledgerCols
-		for _, w := range l.words {
+		for i, w := range l.words {
 			n := norm(w.Text)
-			mid := (w.X0 + w.X1) / 2
+			// A column label's span includes what follows it in brackets
+			// ("Withdrawal (-)", "Balance (SGD)"): amounts sit under the whole label.
+			x1 := w.X1
+			for _, nx := range l.words[i+1:] {
+				if !strings.HasPrefix(nx.Text, "(") || nx.X0-x1 > 3*max(1, w.Y1-w.Y0) {
+					break
+				}
+				x1 = nx.X1
+			}
+			mid := (w.X0 + x1) / 2
 			switch {
 			case strings.HasPrefix(n, "withdraw") || n == "debit" || n == "debits":
 				c.wd, c.hasWd = mid, true
@@ -103,7 +112,7 @@ func isLedger(pages []ocr.Page) bool {
 var (
 	openingLabels = []string{"balancebf", "balancebroughtforward", "openingbalance", "balanceforward", "previousbalance"}
 	closingLabels = []string{"balancecf", "balancecarriedforward", "closingbalance"}
-	ledgerStops   = []string{"depositinsurancescheme", "checkyourstatement", "totalwithdrawals", "totaldebits", "totalinterest", "averagebalance"}
+	ledgerStops   = []string{"depositinsurancescheme", "checkyourstatement", "totalwithdrawals", "totaldebits", "totalinterest", "averagebalance", "totalbalance"}
 )
 
 func hasPrefixAny(n string, prefixes []string) bool {
@@ -121,23 +130,31 @@ func parseLedger(pages []ocr.Page) Parsed {
 	var all []line
 	var rows []*ledgerRow
 	var opening, closing *int64
-	var totalWd, totalDp *int64
+	var totalWd, totalDp, totalClosing *int64
 	for _, pg := range pages {
 		lines := groupLines(pg.Number, pg.Words)
 		all = append(all, lines...)
 		cols, ok := findLedgerHeader(lines)
-		// Totals can sit below the last page's table, or on a page without one.
+		// Totals can sit below the last page's table, or on a page without
+		// one: "Total Withdrawals/Deposits 7,836.60 7,229.01" (OCBC), "Total
+		// Balance Carried Forward: 15,432.10 12,217.33 87.24" (DBS: out, in,
+		// closing balance).
 		for _, l := range lines {
-			if n := norm(l.text()); strings.HasPrefix(n, "totalwithdrawals") || strings.HasPrefix(n, "totaldebits") {
-				var amts []int64
-				for _, w := range l.words {
-					if a, _, ok := parseAmount(w.Text); ok {
-						amts = append(amts, a)
-					}
+			n := norm(l.text())
+			if !strings.HasPrefix(n, "totalwithdrawals") && !strings.HasPrefix(n, "totaldebits") && !strings.HasPrefix(n, "totalbalance") {
+				continue
+			}
+			var amts []int64
+			for _, w := range l.words {
+				if a, _, ok := parseAmount(w.Text); ok {
+					amts = append(amts, a)
 				}
-				if len(amts) >= 2 {
-					totalWd, totalDp = &amts[0], &amts[1]
-				}
+			}
+			if len(amts) >= 2 {
+				totalWd, totalDp = &amts[0], &amts[1]
+			}
+			if len(amts) >= 3 && strings.HasPrefix(n, "totalbalance") {
+				totalClosing = &amts[2]
 			}
 		}
 		if !ok {
@@ -235,6 +252,9 @@ func parseLedger(pages []ocr.Page) Parsed {
 		}
 	}
 
+	if totalClosing != nil {
+		closing = totalClosing
+	}
 	s := parseSummary(all, pages)
 	s.Kind = "bank"
 	bankHeader(&s, all, func(n int) int {
@@ -299,7 +319,7 @@ func parseLedger(pages []ocr.Page) Parsed {
 			sumWd += amount
 		}
 		desc := strings.Join(r.lines, " ")
-		kind, party, note, check := classify(r.lines, credit, holder)
+		kind, party, note, check := classify(r.lines, credit, holder, amount)
 		p.Txns = append(p.Txns, Txn{
 			PostDate: year(r.post), TxnDate: year(r.txn), Description: desc, Amount: amount, Credit: credit,
 			Page: r.page, Y: r.y, Conf: 100, Kind: kind, Counterparty: party, Note: note, Check: check,

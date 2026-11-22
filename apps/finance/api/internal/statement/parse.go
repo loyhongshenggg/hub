@@ -81,6 +81,7 @@ var (
 	// "From 07 SEP 2026 to 05 OCT 2026", "1 SEP 2026 TO 30 SEP 2026",
 	// "1 Sep 2026 - 30 Sep 2026".
 	rePeriod = regexp.MustCompile(`(?i)(?:from\s+)?\b(\d{1,2})\s*([a-z0-9]{3,9})\s*(\d{4})\s*(?:to|-|–)\s*(\d{1,2})\s*([a-z0-9]{3,9})\s*(\d{4})\b`)
+	reAsAt   = regexp.MustCompile(`(?i)\bas\s+(?:at|of)\s+(\d{1,2})\s+([a-z]{3,9})\s+(\d{4})\b`)
 	reAcctNo = regexp.MustCompile(`(?i)\baccount\b(?:\s+(?:no\.?|number|statement))?\s*:?\s*(\d[\d -]{4,}\d)\b`)
 	reFXLine = regexp.MustCompile(`^1\s+[A-Z]{3}\s*=\s*[0-9.]+\s+[A-Z]{3}\b`)
 	reCCY    = regexp.MustCompile(`^[A-Z]{3}$`)
@@ -431,7 +432,7 @@ func Parse(pages []ocr.Page) Parsed {
 			if p.Summary.Kind == "bank" {
 				// A bank account's card-style rows (Trust): own transfers,
 				// interest, refunds and people are told apart from purchases.
-				t.Kind, t.Counterparty, t.Note, t.Check = classify([]string{r.desc}, r.credit, p.Summary.Holder)
+				t.Kind, t.Counterparty, t.Note, t.Check = classify([]string{r.desc}, r.credit, p.Summary.Holder, r.amount)
 				if r.refund {
 					t.Kind = "refund"
 				}
@@ -630,6 +631,18 @@ func parseSummary(lines []line, pages []ocr.Page) Summary {
 		s.PeriodEnd = stmtDate
 		s.PeriodStart = stmtDate.AddDate(0, -1, 1)
 	}
+	// Monthly statements "as at 31 Oct 2026" (DBS): that calendar month.
+	if s.PeriodStart.IsZero() {
+		for _, l := range lines {
+			if m := reAsAt.FindStringSubmatch(l.text()); m != nil {
+				if end := mkDate(m[1], m[2], m[3]); !end.IsZero() {
+					s.PeriodEnd = end
+					s.PeriodStart = time.Date(end.Year(), end.Month(), 1, 0, 0, 0, 0, time.UTC)
+					break
+				}
+			}
+		}
+	}
 	if box, ok := boxSummary(lines); ok {
 		v := func(k string) *int64 {
 			x, ok := box[k]
@@ -698,6 +711,8 @@ var banks = []struct{ key, name string }{
 	{"HSBC", "HSBC"}, {"CITIBANK", "Citibank"}, {"DBS BANK", "DBS"}, {"POSB", "POSB"}, {"OCBC", "OCBC"},
 	{"UNITED OVERSEAS BANK", "UOB"}, {"UOB ", "UOB"}, {"STANDARD CHARTERED", "Standard Chartered"},
 	{"MAYBANK", "Maybank"}, {"AMERICAN EXPRESS", "American Express"}, {"TRUST BANK", "Trust"},
+	// DBS prints its logo as an image; its account names carry the brand.
+	{"DBS SAVINGS", "DBS"}, {"DBS MULTIPLIER", "DBS"}, {"DBS CO. REG", "DBS"}, {"POSB ", "POSB"},
 }
 
 // anyDate reads "October 19, 2026" or "19 Oct 2026".
@@ -946,12 +961,46 @@ func holderName(lines []line) string {
 			return strings.Join(name, " ")
 		}
 	}
+	// Otherwise the name printed above the postal address ("LOK AH MEI" /
+	// "BLK 216 …", DBS): 2–5 capitalised words over a line starting with a
+	// block or house number.
+	for i, l := range lines {
+		if l.page != 1 || i+1 >= len(lines) || len(l.words) < 2 || len(l.words) > 5 {
+			continue
+		}
+		ok := true
+		for _, w := range l.words {
+			if letters(w.Text) != len(w.Text) || strings.ToUpper(w.Text) != w.Text {
+				ok = false
+				break
+			}
+		}
+		next := strings.ToUpper(strings.TrimSpace(lines[i+1].text()))
+		if ok && lines[i+1].page == 1 && reAddress.MatchString(next) && abs(lines[i+1].x0()-l.x0()) < 30 {
+			return l.text()
+		}
+	}
 	return ""
 }
+
+var reAcctDigits = regexp.MustCompile(`^(?:Account\s+No\.?\s*)?\d[\d-]{6,}`)
+
+var reAddress = regexp.MustCompile(`^(?:BLK|BLOCK|APT|#|\d)`)
 
 // bankHeader fills a bank account's number (last 4) and product name.
 func bankHeader(s *Summary, lines []line, width func(int) int) {
 	s.Product, s.Last4 = "", ""
+	// "DBS Savings Plus Account   203-0-002495": a name beside its number
+	// beats a heading like "Current and Savings Account".
+	for _, l := range lines {
+		h := headline(l, width(l.page))
+		rest := strings.TrimSpace(strings.TrimPrefix(l.text(), h))
+		if strings.Contains(strings.ToLower(h), "account") && letters(strings.ReplaceAll(h, " ", "")) == len(strings.ReplaceAll(h, " ", "")) &&
+			reAcctDigits.MatchString(rest) && len(strings.Fields(h)) <= 5 {
+			s.Product = h
+			break
+		}
+	}
 	for _, l := range lines {
 		if l.page != 1 {
 			continue

@@ -74,7 +74,7 @@ function ImportHome() {
         {busy ? <Loader2 className="size-8 animate-spin text-muted-foreground" /> : <FileUp className="size-8 text-muted-foreground" />}
         <div>
           <div className="font-medium">Drop credit-card statement PDFs here</div>
-          <div className="text-sm text-muted-foreground">Credit cards: HSBC and Citibank. Bank accounts: OCBC and Trust (DBS/POSB-style ledgers should work). Other “date · name · amount” layouts usually work too.</div>
+          <div className="text-sm text-muted-foreground">Credit cards: HSBC and Citibank. Bank accounts: OCBC, DBS and Trust. Other “date · name · amount” layouts usually work too.</div>
         </div>
         <Button variant="outline" onClick={() => input.current?.click()} disabled={busy}>
           Choose files
