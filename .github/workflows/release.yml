@@ -46,7 +46,12 @@ jobs:
           . "releases/$REL.env"
           projects="core desktop @hub/shell"
           for app in $APPS; do projects="$projects $app ${app}-api @hub/${app}-web"; done
-          pnpm nx run-many -t lint,test,typecheck --projects="$(echo $projects | tr ' ' ',')" --outputStyle=static
+          # On failure, the failing lines also become annotations: those are
+          # public, while the full log needs a GitHub login.
+          pnpm nx run-many -t lint,test,typecheck --projects="$(echo $projects | tr ' ' ',')" --outputStyle=static 2>&1 | tee "$RUNNER_TEMP/check.log" || {
+            grep -E -- '--- FAIL|_test\.go:[0-9]+:|panic:|✖|error TS|^\s+[0-9]+:[0-9]+\s+error|FAIL ' "$RUNNER_TEMP/check.log" | head -10 | sed 's/^/::error::/'
+            exit 1
+          }
       - name: Build (from the untouched checkout; audited clean copies)
         env:
           REL: ${{ steps.tag.outputs.rel }}
