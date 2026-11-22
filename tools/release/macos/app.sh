@@ -12,6 +12,12 @@ while [ -L "$src" ]; do
   case "$src" in /*) ;; *) src="$dir/$src" ;; esac
 done
 here="$(cd "$(dirname "$src")" && pwd)"
+# The Dock app must not point into Cellar/<name>/<version>: `brew upgrade`
+# deletes that folder. Homebrew's opt/<name> link survives upgrades.
+stable="$here"
+case "$here" in
+*/Cellar/*/*/libexec) [ -d "${here%%/Cellar/*}/opt/@NAME@/libexec" ] && stable="${here%%/Cellar/*}/opt/@NAME@/libexec" ;;
+esac
 # shellcheck source=/dev/null
 . "$here/release.env"
 app="$HOME/Applications/$TITLE.app"
@@ -23,7 +29,7 @@ make_app() {
   cp "$here/$NAME.icns" "$app/Contents/Resources/$NAME.icns"
   cat >"$app/Contents/MacOS/$NAME" <<SH
 #!/bin/bash
-exec "$here/launch.sh"
+exec "$stable/launch.sh"
 SH
   chmod 0755 "$app/Contents/MacOS/$NAME"
   cat >"$app/Contents/Info.plist" <<PL
@@ -49,7 +55,7 @@ PL
 
 case "${1:-open}" in
 open)
-  if [ ! -d "$app" ] || ! grep -q "$here/launch.sh" "$app/Contents/MacOS/$NAME" 2>/dev/null; then
+  if [ ! -d "$app" ] || ! grep -q "$stable/launch.sh" "$app/Contents/MacOS/$NAME" 2>/dev/null; then
     make_app
     echo "Added $TITLE to ~/Applications and the Dock."
   fi

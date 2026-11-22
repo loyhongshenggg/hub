@@ -42,7 +42,7 @@ Closing the Finance window stops it completely. Opening the icon starts it again
 
 | To                                                                                                                                  | Do (in PowerShell)                                                                                               |
 | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Update to the newest version                                                                                                        | `wsl -d finance -e /opt/hub/update.sh`. Your data is kept. Close Finance first.                                  |
+| Update to the newest version                                                                                                        | See [Updating](#updating)                                                                                        |
 | Check the download is genuine (every release is built by GitHub Actions from a fresh checkout and audited to hold no personal data) | Compare with `SHA256SUMS` on the release page, or run the `gh attestation verify` command from the release notes |
 | Fix a missing Desktop icon                                                                                                          | `wsl -d finance -u root -e /opt/hub/first-run.sh`                                                                |
 | See what went wrong                                                                                                                 | Read `%LOCALAPPDATA%\finance\core.log` and `launcher.log`                                                        |
@@ -75,10 +75,44 @@ Closing the Finance window stops it completely. Quitting it from the Dock does t
 
 | To                                        | Do (in Terminal)                                                                                    |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Update to the newest version              | `brew upgrade finance`. Your data is kept.                                                          |
+| Update to the newest version              | See [Updating](#updating)                                                                           |
 | Stop it from Terminal                     | `finance stop`                                                                                      |
 | See what went wrong                       | Read `~/Library/Application Support/Finance/core.log` and `launcher.log`                            |
 | Uninstall (**deletes your Finance data**) | `finance remove-app`, `brew uninstall finance`, then delete `~/Library/Application Support/Finance` |
+
+### Updating
+
+New versions are listed on the [releases page](../../releases). Updating keeps all your data (goals, transactions, imported statements).
+
+**Windows** (in PowerShell):
+
+1. Close the Finance window.
+2. Run:
+
+   ```powershell
+   wsl -d finance -e /opt/hub/update.sh
+   ```
+
+   It prints _"Updated to …"_, or _"Finance … is up to date"_ if there's nothing new.
+
+3. Open Finance from its Desktop icon.
+
+To see which version you have: `wsl -d finance -e grep VERSION /opt/hub/release.env`
+
+**macOS** (in Terminal):
+
+1. Close the Finance window.
+2. Run:
+
+   ```bash
+   brew update && brew upgrade finance
+   ```
+
+   `brew update` fetches the list of new versions first. Without it, Homebrew can miss a new version for up to a day.
+
+3. **Updating from 0.2.2 or older:** run `finance` once. This repoints the Dock icon so it keeps working after future updates. After that, open Finance from the Dock as usual.
+
+To see which version you have: `brew list --versions finance`
 
 Claude features in Finance are optional. They need your own Anthropic API key (Finance → Settings) and have a monthly spending cap.
 
@@ -91,6 +125,15 @@ dist/platform/core/hub serve       # then open http://hub.localhost:7000
 ```
 
 Apps keep running when the core stops and are picked up again on the next start. `hub stop` stops a running core.
+
+**Updating your own hub after pulling changes:** a running app only picks up new code once its image is rebuilt.
+
+```bash
+git pull && pnpm install
+pnpm nx run finance:docker-build             # for each app that changed
+dist/platform/core/hub apps restart finance  # or switch it off and on in the hub
+pnpm nx build core                           # only if platform/ changed; then close and reopen the hub window
+```
 
 ### Releasing
 

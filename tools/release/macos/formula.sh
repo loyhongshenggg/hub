@@ -42,6 +42,7 @@ class $class < Formula
     <<~EOS
       Open $TITLE with: $NAME
       The first run adds $TITLE to ~/Applications and the Dock. Needs Google Chrome or Microsoft Edge.
+      Updating from 0.2.2 or older: run $NAME once so the Dock icon follows future updates.
     EOS
   end
 
