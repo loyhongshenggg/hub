@@ -11,11 +11,13 @@ import (
 	"net/http"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"hub.localhost/apps/finance/api/internal/catalog"
+	"hub.localhost/apps/finance/api/internal/goals"
 	"hub.localhost/apps/finance/api/internal/insights"
 	"hub.localhost/apps/finance/api/internal/merchant"
 	"hub.localhost/apps/finance/api/internal/store"
@@ -79,10 +81,39 @@ func (a *api) listTxns(w http.ResponseWriter, r *http.Request) {
 	if v := q.Get("limit"); v != "" {
 		f.Limit, _ = strconv.Atoi(v)
 	}
+	// goal=<id>: exactly what that spending-limit goal counts.
+	var goal *store.Goal
+	if v := q.Get("goal"); v != "" {
+		id, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || id <= 0 {
+			writeError(w, 400, "bad goal id")
+			return
+		}
+		g, err := a.store.GetGoal(r.Context(), id)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		if g.Kind != goals.Limit {
+			writeError(w, 400, "only spending-limit goals count transactions")
+			return
+		}
+		goal = &g
+	}
+	limit := f.Limit
+	if goal != nil {
+		f.Limit = 0 // filter first, then cut
+	}
 	txns, err := a.store.Txns(r.Context(), f)
 	if err != nil {
 		fail(w, err)
 		return
+	}
+	if goal != nil {
+		txns = slices.DeleteFunc(txns, func(t store.Txn) bool { return !goals.Counts(*goal, t) })
+		if limit > 0 && len(txns) > limit {
+			txns = txns[:limit]
+		}
 	}
 	writeJSON(w, 200, map[string]any{"transactions": txns})
 }

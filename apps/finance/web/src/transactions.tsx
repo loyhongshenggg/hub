@@ -1,9 +1,9 @@
 import { Button, cn, Input, Sheet, SheetContent, SheetTitle } from '@hub/ui-kit';
-import { AlertCircle, Download, Plus, Search, Users } from 'lucide-react';
+import { AlertCircle, Download, Plus, Search, Target, Users, X } from 'lucide-react';
 import { useDeferredValue, useEffect, useState } from 'react';
 import { api, type Kind, type Txn, type TxnQuery } from './api';
 import { money, monthName, plural, toCents, today, txnKindNames } from './format';
-import { useCategories, useInvalidateLedger, useOverview, useTxns } from './queries';
+import { useCategories, useGoals, useInvalidateLedger, useOverview, useTxns } from './queries';
 import { go, type Route } from './router';
 import { TxnList, TxnSheet } from './sheets';
 import { ErrorNote, Field, selectCls } from './ui';
@@ -18,6 +18,7 @@ export function txnQueryFor(q: URLSearchParams, search = q.get('q') ?? ''): TxnQ
     review: q.get('review') === '1',
     split: q.get('split') === '1',
     q: search,
+    goal: Number(q.get('goal')) || undefined,
     limit: month ? undefined : 500,
   };
 }
@@ -29,6 +30,9 @@ export function TransactionsPage({ route }: { route: Route }) {
   const kind = q.get('kind') ?? '';
   const review = q.get('review') === '1';
   const shared = q.get('split') === '1';
+  const goalId = Number(q.get('goal')) || undefined;
+  const { data: goals } = useGoals();
+  const goal = goalId ? goals?.find((g) => g.id === goalId) : undefined;
   const [search, setSearch] = useState(q.get('q') ?? '');
   const deferred = useDeferredValue(search);
   const cats = useCategories();
@@ -45,7 +49,7 @@ export function TransactionsPage({ route }: { route: Route }) {
     [],
   );
   const set = (p: Record<string, string | boolean | undefined>) =>
-    go('transactions', undefined, { month, category, kind, review, split: shared, q: search, ...p }, true);
+    go('transactions', undefined, { month, category, kind, review, split: shared, q: search, goal: goalId, ...p }, true);
 
   const out = txns.filter((t) => t.amount > 0 && !t.excluded && (t.kind === 'purchase' || t.kind === 'fee')).reduce((s, t) => s + t.myAmount, 0);
   const back = txns.filter((t) => t.amount < 0 && t.kind === 'refund').reduce((s, t) => s - t.amount, 0);
@@ -68,6 +72,18 @@ export function TransactionsPage({ route }: { route: Route }) {
           </Button>
         </div>
       </div>
+
+      {goalId && (
+        <div className="flex items-center gap-2 self-start rounded-full border border-primary/40 bg-primary/10 py-1 pr-1 pl-3 text-sm">
+          <Target className="size-4 text-[var(--seq)]" aria-hidden />
+          <span>
+            Counted by <span className="font-medium">{goal?.title ?? 'a goal'}</span>
+          </span>
+          <button type="button" onClick={() => set({ goal: undefined })} className="rounded-full p-1 hover:bg-accent" aria-label="Show all transactions, not just this goal's">
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-[2fr_1fr_1fr_1fr_auto_auto]">
         <div className="relative col-span-2 sm:col-span-1">

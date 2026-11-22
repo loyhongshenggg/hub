@@ -493,3 +493,53 @@ func TestGoalReorder(t *testing.T) {
 		t.Errorf("a refused reorder changed the order: %s", o)
 	}
 }
+
+// TestTxnsForGoal: "See transactions" on a spending-limit goal lists exactly
+// what the goal counts, so the list adds up to the goal's figure.
+func TestTxnsForGoal(t *testing.T) {
+	srv, _ := setup(t)
+	add := func(date, cat, kind, merchant string, cents int64) int64 {
+		var tx store.Txn
+		call(t, srv, "POST", "/api/transactions", map[string]any{"date": date, "amount": cents, "kind": kind, "category": cat, "merchant": merchant}, &tx)
+		return tx.ID
+	}
+	add("2026-11-03", "dining", "purchase", "Kopitiam", 12_50)
+	add("2026-11-05", "groceries", "purchase", "FairPrice", 40_00)
+	add("2026-11-06", "insurance", "purchase", "AIA", 300_00) // not counted: other category
+	add("2026-11-07", "other", "income", "Salary", 6000_00)   // not counted: not spending
+	skip := add("2026-11-08", "shopping", "purchase", "Uniqlo", 59_90)
+	call(t, srv, "PATCH", "/api/transactions/"+itoa(skip), map[string]any{"excluded": true}, nil) // not counted: excluded
+	add("2026-10-30", "dining", "purchase", "Toast Box", 8_00) // other month
+
+	var g struct {
+		store.Goal
+		Progress struct{ Current int64 }
+	}
+	call(t, srv, "POST", "/api/goals", map[string]any{"kind": "limit", "title": "Living costs", "target": 1500_00, "period": "month",
+		"filter": map[string]any{"categories": []string{"dining", "groceries", "shopping", "other"}}}, &g)
+
+	var l struct{ Transactions []store.Txn }
+	if code := call(t, srv, "GET", "/api/transactions?goal="+itoa(g.ID)+"&month=2026-11", nil, &l); code != 200 {
+		t.Fatalf("list %d", code)
+	}
+	var sum int64
+	var names []string
+	for _, tx := range l.Transactions {
+		sum += tx.Mine()
+		names = append(names, tx.Merchant)
+	}
+	if strings.Join(names, ",") != "FairPrice,Kopitiam" || sum != 52_50 {
+		t.Errorf("goal list: %v = %d", names, sum)
+	}
+	call(t, srv, "GET", "/api/transactions?goal="+itoa(g.ID)+"&limit=1", nil, &l)
+	if len(l.Transactions) != 1 || l.Transactions[0].Merchant != "FairPrice" {
+		t.Errorf("limit applies after the goal filter: %+v", l.Transactions)
+	}
+	var habit store.Goal
+	call(t, srv, "POST", "/api/goals", map[string]any{"kind": "habit", "title": "Invest", "target": 950_00}, &habit)
+	for _, q := range []string{"goal=abc", "goal=99999", "goal=" + itoa(habit.ID)} {
+		if code := call(t, srv, "GET", "/api/transactions?"+q, nil, nil); code < 400 {
+			t.Errorf("%s: %d", q, code)
+		}
+	}
+}

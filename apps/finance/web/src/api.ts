@@ -383,6 +383,7 @@ export interface TxnQuery {
   statement?: number;
   spending?: boolean;
   split?: boolean;
+  goal?: number; // what this spending-limit goal counts
   limit?: number;
 }
 

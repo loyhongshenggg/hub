@@ -234,7 +234,7 @@ function GoalCard({ g, dragging, ...drag }: { g: GoalView } & CardDrag) {
   const p = g.progress;
   const isLimit = g.kind === 'limit';
   const count = isLimit && g.metric === 'count';
-  const fmt = (v: number) => (count ? String(v) : money(v, { whole: v >= 100000 }));
+  const fmt = (v: number) => (count ? String(v) : money(v, { whole: v >= 100000 || v % 100 === 0 }));
   return (
     <a
       href={href('goals', g.id)}
@@ -586,7 +586,7 @@ function GoalDetail({ id }: { id: number }) {
             ...(g.filter.keywords ?? []).map((k) => `“${k}”`),
           ].join(', ') || 'all spending'}
           .{' '}
-          <a className="text-primary underline-offset-4 hover:underline" href={href('transactions', undefined, { month: p.periodStart?.slice(0, 7), category: g.filter.categories?.[0] })}>
+          <a className="text-primary underline-offset-4 hover:underline" href={href('transactions', undefined, { goal: g.id, month: g.period === 'month' ? p.periodStart?.slice(0, 7) : undefined })}>
             See transactions
           </a>
         </div>
@@ -679,7 +679,7 @@ function GoalDetail({ id }: { id: number }) {
 function Numbers({ g }: { g: GoalView }) {
   const p = g.progress;
   const count = g.metric === 'count';
-  const f = (v: number) => (count ? String(v) : money(v, { whole: v >= 100000 }));
+  const f = (v: number) => (count ? String(v) : money(v, { whole: v >= 100000 || v % 100 === 0 }));
   const cells: [string, string][] = [];
   switch (g.kind) {
     case 'target':

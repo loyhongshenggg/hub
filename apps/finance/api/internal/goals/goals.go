@@ -302,10 +302,16 @@ func Matches(f store.GoalFilter, t store.Txn) bool {
 	return false
 }
 
+// Counts reports whether a spending-limit goal counts transaction t (in
+// any period).
+func Counts(g store.Goal, t store.Txn) bool {
+	return !t.Excluded && catalog.Spending(t.Kind) && Matches(g.Filter, t)
+}
+
 func sumPeriod(g store.Goal, txns []store.Txn, from, to string) int64 {
 	var v int64
 	for _, t := range txns {
-		if t.Excluded || t.Date < from || t.Date > to || !catalog.Spending(t.Kind) || !Matches(g.Filter, t) {
+		if t.Date < from || t.Date > to || !Counts(g, t) {
 			continue
 		}
 		if g.Metric == "count" {
