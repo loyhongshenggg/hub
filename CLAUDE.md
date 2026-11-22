@@ -22,6 +22,7 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
 - Dev: `pnpm nx dev core` → shell (Vite + HMR) served through the core at `http://hub.localhost:7000`.
 - Build: `pnpm nx build core` → `dist/platform/core/hub` with the shell embedded; run `dist/platform/core/hub serve`.
 - Docker tests: `pnpm nx run core:integration`.
+- Windows release: `releases/<name>.env` lists what ships; `tools/release/build.sh <name> <version>` → `dist/release/<name>/` (`<name>.wsl`, update bundle, SHA256SUMS; audited clean by `tools/release/audit.sh`). Publish = push tag `<name>-v<version>` (GitHub Actions). Locally, if the default Docker bridge is unavailable: `DOCKER_BUILD_FLAGS=--network=host`. ADR-0011.
 - Desktop icon: `pnpm nx run desktop:install` (shortcut → `tools/desktop/launch.sh`; logs in `%LOCALAPPDATA%\hub`). `hub stop` stops a running core. A running app only picks up code changes after its image is rebuilt (no Rebuild button yet).
 
 ## Conventions
@@ -63,11 +64,12 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
     - [x] 3d UI (Learning + News), motion, responsive (2026-11-21)
     - [ ] 3e news hot topics; Claude switches (tagging, chapter drafts, discovery) + spend cap; algorithmic discovery
     - [ ] 3f badge/notify, ADR
-  - [x] finance: goals (paragraph → Claude drafts), insights, statement import with local OCR + reconciliation, SG merchant resolver — design in [docs/finance/design.md](docs/finance/design.md) (2026-11-21)
+  - [x] finance: goals (local paragraph reader, Claude optional), insights, statement import (HSBC via OCR, Citibank via PDF text) with reconciliation, SG merchant resolver, shared-cost splits — design in [docs/finance/design.md](docs/finance/design.md) (2026-11-21)
   - [ ] Rebuild button
   - [ ] CPU/RAM per app
   - [x] Desktop icon: start on click, stop on close (ADR-0009, 2026-11-21) — `pnpm nx run desktop:install`
   - [ ] Start on Windows login (ADR-0010)
+  - [x] Windows release `finance.wsl` (WSL distribution file, clean-copy audit, CI on tag) — ADR-0011 (2026-11-22); publish pending (repo `hs-hub`)
 - [ ] Phase 3 — platform services
 
 <!-- nx configuration start-->
@@ -93,3 +95,12 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
 - The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
 
 <!-- nx configuration end-->
+
+## Approach
+
+- Read existing files before writing. Don't re-read unless changed.
+- Thorough in reasoning, concise in output.
+- Skip files over 100KB unless required.
+- No sycophantic openers or closing fluff.
+- No emojis or em-dashes.
+- Do not guess APIs, versions, flags, commit SHAs, or package names. Verify by reading code or docs before asserting.

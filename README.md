@@ -7,7 +7,43 @@ http://hub.localhost:7000          the shell: dock, home grid, tabs, logs
 http://<id>.hub.localhost:7000     each app, on its own origin (framed by the shell)
 ```
 
-## Run it
+## Install on Windows
+
+**Finance** (goals, spending insights and credit-card statement import for Singapore) is released as a Windows download. It runs entirely on your PC, inside its own small Linux system (WSL). Your data never leaves your machine.
+
+**You need:**
+
+- Windows 11, or Windows 10 22H2
+- about 3 GB of free disk
+- Google Chrome or Microsoft Edge
+
+**Steps:**
+
+1. **Turn on WSL (once).** Open **PowerShell as administrator** and run:
+
+   ```powershell
+   wsl --install --no-distribution
+   ```
+
+   Restart when Windows asks. If you already use WSL, run `wsl --update` instead. Finance needs WSL 2.4.8 or newer; check with `wsl --version`.
+
+2. **Download `finance.wsl`** from the [latest release](../../releases/latest).
+3. **Double-click `finance.wsl`.** Windows installs it, and a short setup window ends with _"Finance … is installed"_. Close that window.
+4. **Open Finance** with the new **Finance** icon on your Desktop. The first start takes about a minute.
+
+Closing the Finance window stops it completely. Opening the icon starts it again where you left off.
+
+| To                                                                                                                                  | Do (in PowerShell)                                                                                               |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Update to the newest version                                                                                                        | `wsl -d finance -e /opt/hub/update.sh`. Your data is kept. Close Finance first.                                  |
+| Check the download is genuine (every release is built by GitHub Actions from a fresh checkout and audited to hold no personal data) | Compare with `SHA256SUMS` on the release page, or run the `gh attestation verify` command from the release notes |
+| Fix a missing Desktop icon                                                                                                          | `wsl -d finance -u root -e /opt/hub/first-run.sh`                                                                |
+| See what went wrong                                                                                                                 | Read `%LOCALAPPDATA%\finance\core.log` and `launcher.log`                                                        |
+| Uninstall (**deletes your Finance data**)                                                                                           | `wsl --unregister finance`, then delete the Desktop icon and `%LOCALAPPDATA%\finance`                            |
+
+Claude features in Finance are optional. They need your own Anthropic API key (Finance → Settings) and have a monthly spending cap.
+
+## Run it (developers)
 
 ```bash
 pnpm install
@@ -16,6 +52,15 @@ dist/platform/core/hub serve       # then open http://hub.localhost:7000
 ```
 
 Apps keep running when the core stops and are picked up again on the next start. `hub stop` stops a running core.
+
+### Releasing
+
+A release is a WSL distribution file with the hub and a chosen set of apps ([ADR-0011](docs/adr/0011-releases.md)). `releases/<name>.env` lists what ships (Finance: `releases/finance.env`).
+
+```bash
+RELEASE_REPO=<owner>/hs-hub tools/release/build.sh finance 0.1.0   # local build → dist/release/finance/
+git tag finance-v0.1.0 && git push origin finance-v0.1.0           # GitHub Actions builds and publishes it
+```
 
 ### Desktop icon (Windows)
 

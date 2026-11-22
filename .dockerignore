@@ -12,3 +12,8 @@
 tmp
 coverage
 **/.env
+# Local data never enters an image (release audit: tools/release/audit.sh)
+**/*.pdf
+**/*.db
+**/*.db-*
+**/*.sqlite*

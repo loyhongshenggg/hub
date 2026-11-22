@@ -1,0 +1,70 @@
+# Builds and publishes a Windows release when a tag <release>-v<version> is
+# pushed, e.g. finance-v0.1.0 (releases/finance.env). docs/adr/0011-releases.md
+name: release
+
+on:
+  push:
+    tags: ['*-v*']
+
+permissions:
+  contents: write # create the GitHub release
+  id-token: write # sign the build attestations
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Release name and version from the tag
+        run: |
+          echo "REL=${GITHUB_REF_NAME%-v*}" >>"$GITHUB_ENV"
+          echo "VERSION=${GITHUB_REF_NAME##*-v}" >>"$GITHUB_ENV"
+          test -f "releases/${GITHUB_REF_NAME%-v*}.env" || { echo "::error::no releases/${GITHUB_REF_NAME%-v*}.env"; exit 1; }
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: platform/core/go.mod
+          cache: false
+      - uses: pnpm/action-setup@v4 # version from package.json "packageManager"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check
+        run: |
+          . "releases/$REL.env"
+          projects="core desktop @hub/shell"
+          for app in $APPS; do projects="$projects $app ${app}-api @hub/${app}-web"; done
+          pnpm nx run-many -t lint,test,typecheck --projects="$(echo $projects | tr ' ' ',')" --outputStyle=static
+
+      - name: Build (from the untouched checkout; audits it is a clean copy)
+        run: |
+          test -z "$(git status --porcelain)" || { git status --short; echo "::error::checkout is modified"; exit 1; }
+          tools/release/build.sh "$REL" "$VERSION"
+
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            dist/release/${{ env.REL }}/${{ env.REL }}.wsl
+            dist/release/${{ env.REL }}/${{ env.REL }}-update.tar.gz
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          . "releases/$REL.env"
+          d="dist/release/$REL"
+          cat >notes.md <<NOTES
+          **Install on Windows:** download \`$REL.wsl\` below and double-click it, then open **$TITLE** from the Desktop icon. Full steps: [README › Install](https://github.com/$GITHUB_REPOSITORY#install-on-windows).
+
+          **Update an existing install** (keeps your data): \`wsl -d $REL -e /opt/hub/update.sh\`
+
+          **Verify the download:** \`gh attestation verify $REL.wsl --repo $GITHUB_REPOSITORY\`, or compare with \`SHA256SUMS\`.
+          NOTES
+          gh release create "$GITHUB_REF_NAME" "$d/$REL.wsl" "$d/$REL-update.tar.gz" "$d/SHA256SUMS" \
+            --title "$TITLE $VERSION" --notes-file notes.md

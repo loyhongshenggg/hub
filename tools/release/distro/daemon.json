@@ -1,0 +1,6 @@
+{
+  "bridge": "hubbr0",
+  "iptables": false,
+  "ip6tables": false,
+  "default-address-pools": [{ "base": "10.231.0.0/17", "size": 24 }]
+}

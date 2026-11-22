@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>hub</title>
+    <title>{{TITLE}}</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233b6ff5'/%3E%3C/svg%3E" />
     <style>
       :root { color-scheme: light dark; --bg: #f7f8fb; --fg: #1d2433; --muted: #6b7385; }
@@ -20,7 +20,7 @@
   <body>
     <div class="box">
       <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#3b6ff5"/><g fill="#fff"><rect x="7" y="7" width="8" height="8" rx="2"/><rect x="17" y="7" width="8" height="8" rx="2" opacity=".7"/><rect x="7" y="17" width="8" height="8" rx="2" opacity=".7"/><rect x="17" y="17" width="8" height="8" rx="2"/></g></svg>
-      <p>Starting hub…</p>
+      <p>Starting {{TITLE}}…</p>
       <p class="muted" id="hint">Waking up WSL and Docker</p>
     </div>
     <script>
@@ -33,7 +33,7 @@
         img.onerror = () => {
           if (Date.now() - started > 90000)
             document.getElementById('hint').textContent =
-              'This is taking long — see %LOCALAPPDATA%\\hub\\core.log';
+              'This is taking long — details are in core.log next to the app’s settings in %LOCALAPPDATA%';
           setTimeout(probe, 500);
         };
         img.src = hub + 'favicon.svg?t=' + Date.now();
