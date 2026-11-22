@@ -440,6 +440,16 @@ function qs(q: object): string {
   return s ? `?${s}` : '';
 }
 
+/**
+ * goalBody drops what the server computes (a GoalView's progress and
+ * entries): callers often pass a whole view, and the API rejects unknown
+ * fields.
+ */
+export function goalBody(g: Partial<Goal> & Partial<Pick<GoalView, 'progress' | 'entries'>>): Partial<Goal> {
+  const { progress: _progress, entries: _entries, ...goal } = g;
+  return goal;
+}
+
 export const api = {
   status: () => req<Status>('GET', '/api/status'),
   catalog: () => req<Catalog>('GET', '/api/catalog'),
@@ -489,8 +499,8 @@ export const api = {
 
   goals: () => req<{ goals: GoalView[] }>('GET', '/api/goals').then((r) => r.goals),
   goal: (id: number) => req<GoalView>('GET', `/api/goals/${id}`),
-  createGoal: (g: Partial<Goal>) => req<GoalView>('POST', '/api/goals', g),
-  updateGoal: (g: Goal) => req<GoalView>('PUT', `/api/goals/${g.id}`, g),
+  createGoal: (g: Partial<Goal>) => req<GoalView>('POST', '/api/goals', goalBody(g)),
+  updateGoal: (g: Goal) => req<GoalView>('PUT', `/api/goals/${g.id}`, goalBody(g)),
   deleteGoal: (id: number) => req<void>('DELETE', `/api/goals/${id}`),
   addEntry: (id: number, e: { date: string; amount: number; note: string }) =>
     req<GoalView>('POST', `/api/goals/${id}/entries`, e),

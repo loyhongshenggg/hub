@@ -3,7 +3,7 @@ import { Archive, Check, Flag, Loader2, Pause, PenLine, Play, Plus, Sparkles, Ta
 import { useMemo, useState } from 'react';
 import { api, type Drafts, type GoalView } from './api';
 import { BalanceLine, PeriodBars } from './charts';
-import { blankGoal, GoalForm, type GoalDraft } from './goal-form';
+import { blankGoal, GoalForm, goalFormError, type GoalDraft } from './goal-form';
 import { areaNames, date, kindNames, money, monthYear, plural, toCents, today } from './format';
 import { keys, queryClient, useCategories, useClaude, useGoal, useGoals, useSaveGoal } from './queries';
 import { go, href, type Route } from './router';
@@ -244,9 +244,10 @@ function SingleForm({ onDone }: { onDone: () => void }) {
   return (
     <div className="flex flex-col gap-4">
       <GoalForm value={g} onChange={setG} />
+      <FormProblem draft={g} />
       <ErrorNote error={save.error} />
       <div className="flex gap-2">
-        <Button disabled={save.isPending} onClick={() => save.mutate(g, { onSuccess: onDone })}>
+        <Button disabled={save.isPending || !!goalFormError(g)} onClick={() => save.mutate(g, { onSuccess: onDone })}>
           Save goal
         </Button>
         <Button variant="ghost" onClick={onDone}>
@@ -260,14 +261,19 @@ function SingleForm({ onDone }: { onDone: () => void }) {
 function DraftReview({ drafts, forms, setForms, onDone }: { drafts: Drafts | null; forms: GoalDraft[]; setForms: (f: GoalDraft[]) => void; onDone: () => void }) {
   const save = useSaveGoal();
   const [saved, setSaved] = useState<Set<number>>(new Set());
+  // Skipped drafts are hidden, not removed, so every form keeps its index.
+  const [skipped, setSkipped] = useState<Set<number>>(new Set());
   const [err, setErr] = useState<unknown>(null);
+  const finishIfDone = (s: Set<number>, k: Set<number>) => {
+    if (s.size + k.size >= forms.length) onDone();
+  };
   const saveOne = async (i: number) => {
     setErr(null);
     try {
       await save.mutateAsync(forms[i]);
       const next = new Set(saved).add(i);
       setSaved(next);
-      if (next.size === forms.length) onDone();
+      finishIfDone(next, skipped);
     } catch (e) {
       setErr(e);
     }
@@ -313,7 +319,7 @@ function DraftReview({ drafts, forms, setForms, onDone }: { drafts: Drafts | nul
       <ErrorNote error={err} />
       <div className="flex flex-col gap-6">
         {forms.map((f, i) =>
-          saved.has(i) ? (
+          skipped.has(i) ? null : saved.has(i) ? (
             <div key={i} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
               <Check className="size-4 text-[var(--good)]" /> Saved “{f.title}”
             </div>
@@ -321,11 +327,19 @@ function DraftReview({ drafts, forms, setForms, onDone }: { drafts: Drafts | nul
             <div key={i} className="rounded-xl border p-4">
               {drafts?.reasoning[i] && <p className="mb-3 text-xs text-muted-foreground">{drafts.reasoning[i]}</p>}
               <GoalForm value={f} onChange={(g) => setForms(forms.map((x, j) => (j === i ? g : x)))} />
+              <FormProblem draft={f} />
               <div className="mt-4 flex gap-2">
-                <Button onClick={() => void saveOne(i)} disabled={save.isPending}>
+                <Button onClick={() => void saveOne(i)} disabled={save.isPending || !!goalFormError(f)}>
                   Save this goal
                 </Button>
-                <Button variant="ghost" onClick={() => { const next = forms.filter((_, j) => j !== i); if (next.length === 0) onDone(); else setForms(next); }}>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    const next = new Set(skipped).add(i);
+                    setSkipped(next);
+                    finishIfDone(saved, next);
+                  }}
+                >
                   Skip
                 </Button>
               </div>
@@ -354,12 +368,19 @@ function GoalDetail({ id }: { id: number }) {
       <div className="flex flex-col gap-4">
         <SheetTitle>Edit goal</SheetTitle>
         <GoalForm value={editing} onChange={setEditing} />
+        <FormProblem draft={editing} />
         <ErrorNote error={save.error} />
         <div className="flex gap-2">
-          <Button onClick={() => save.mutate({ ...g, ...editing }, { onSuccess: () => setEditing(null) })} disabled={save.isPending}>
+          <Button onClick={() => save.mutate({ ...g, ...editing }, { onSuccess: () => setEditing(null) })} disabled={save.isPending || !!goalFormError(editing)}>
             Save
           </Button>
-          <Button variant="ghost" onClick={() => setEditing(null)}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              save.reset();
+              setEditing(null);
+            }}
+          >
             Cancel
           </Button>
         </div>
@@ -433,7 +454,14 @@ function GoalDetail({ id }: { id: number }) {
       {g.entries && g.entries.length > 0 && <Entries g={g} />}
 
       <div className="flex flex-wrap gap-2 border-t pt-4">
-        <Button variant="outline" size="sm" onClick={() => setEditing({ ...g })}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            save.reset();
+            setEditing({ ...g });
+          }}
+        >
           <PenLine className="size-4" /> Edit
         </Button>
         {g.status === 'active' && (
@@ -554,6 +582,7 @@ function CheckIn({ g }: { g: GoalView }) {
           <Input type="date" value={when} onChange={(e) => setWhen(e.target.value)} />
         </Field>
       </div>
+      {amount.trim() !== '' && !(toCents(amount) >= 0) && <p className="mt-1 text-xs text-destructive">Type an amount, e.g. 37500, 37,500.50 or 37.5k</p>}
       <Input className="mt-2" placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
       <ErrorNote error={err} />
       <Button className="mt-2" size="sm" onClick={() => void submit()} disabled={busy || !amount || !(toCents(amount) >= 0)}>
@@ -592,4 +621,10 @@ function Entries({ g }: { g: GoalView }) {
       </ul>
     </div>
   );
+}
+
+/** FormProblem says why Save is off (see goalFormError). */
+function FormProblem({ draft }: { draft: GoalDraft }) {
+  const problem = goalFormError(draft);
+  return problem ? <p className="text-sm text-muted-foreground">{problem}</p> : null;
 }

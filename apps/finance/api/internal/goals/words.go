@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -31,7 +32,7 @@ func FromWords(text string, today time.Time, averages map[string]int64) Reading 
 	today = time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
 	var last *store.Goal // the previous target goal, for "I have S$6k now" follow-ups
 	lastIdx := -1
-	for _, s := range sentences(text) {
+	for _, s := range clauses(text, today) {
 		c := readClause(s, today)
 		if c.empty() {
 			continue
@@ -107,6 +108,61 @@ func sentences(text string) []string {
 		}
 	}
 	return out
+}
+
+// clauses splits each sentence where it joins two goals ("save S$20k by
+// 2027, and keep delivery under S$250 a month"), but only when the parts
+// read as more goals than the whole sentence; otherwise the sentence stays
+// whole ("keep dining under S$300 and groceries under S$400 a month").
+func clauses(text string, today time.Time) []string {
+	var out []string
+	for _, s := range sentences(text) {
+		parts := splitJoins(s)
+		if len(parts) > 1 && !slices.ContainsFunc(parts[1:], func(p string) bool { return followUp(p, today) }) &&
+			goalCount(parts, today) > goalCount([]string{s}, today) {
+			out = append(out, parts...)
+		} else {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+var (
+	reJoin     = regexp.MustCompile(`(?i)\s*(?:;|,\s*(?:and|but|plus|while|then)\s+|\s+and\s+also\s+)\s*`)
+	reJoinVerb = regexp.MustCompile(`(?i)\s+and\s+((?:i\s+(?:want\s+to|will|'ll)\s+)?(?:keep|spend|pay|invest|save|put|limit|cap|stay|top|build|clear|give)\b)`)
+)
+
+func splitJoins(s string) []string {
+	t := reJoinVerb.ReplaceAllString(s, "\x01$1")
+	t = reJoin.ReplaceAllString(t, "\x01")
+	var out []string
+	for _, p := range strings.Split(t, "\x01") {
+		if p = strings.TrimSpace(p); len(p) > 2 {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+var reFollowUp = regexp.MustCompile(`(?i)^(?:i\s+)?(?:can|could|have|had|already|currently|'ve|will\s+have)\b`)
+
+// followUp reports whether a part only adds detail to the goal before it
+// ("I have S$6k now", "can save S$700 a month").
+func followUp(p string, today time.Time) bool {
+	return reFollowUp.MatchString(strings.TrimSpace(p)) || readClause(p, today).current > 0
+}
+
+func goalCount(parts []string, today time.Time) int {
+	n := 0
+	for _, p := range parts {
+		if c := readClause(p, today); !c.empty() {
+			if _, _, ok := c.goal(p, today); ok {
+				n++
+			}
+		}
+	}
+	return n
 }
 
 type amount struct {

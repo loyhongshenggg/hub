@@ -1,6 +1,7 @@
 package goals
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -99,4 +100,38 @@ func TestFromWordsIgnoresYearsAndPercent(t *testing.T) {
 	if len(r.Goals) != 1 || r.Goals[0].Target != 17_200_000 || r.Goals[0].TargetDate != "2029-12-31" {
 		t.Errorf("%+v", r.Goals)
 	}
+}
+
+func TestFromWordsJoinedGoals(t *testing.T) {
+	titles := func(text string) []string {
+		var out []string
+		for _, g := range FromWords(text, today, nil).Goals {
+			out = append(out, fmt.Sprintf("%s=%d", g.Kind, g.Target+g.StartAmount*boolInt(g.Kind == Payoff)))
+		}
+		return out
+	}
+	for text, want := range map[string][]string{
+		// Two goals in one sentence.
+		"I want to save 20k for an emergency fund by end 2027, and keep food delivery under S$250 a month.": {"target=2000000", "limit=25000"},
+		"Save S$30k for the wedding by June 2028 and invest S$500 a month":                                  {"target=3000000", "habit=50000"},
+		"Pay off my S$8k car loan by 2027; keep dining under S$400 a month":                                 {"payoff=800000", "limit=40000"},
+		// One goal with details: stays one goal.
+		"Save S$20k for emergencies by 2027, and I have S$6k now": {"target=2000000"},
+	} {
+		if got := titles(text); fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Errorf("%q\n got %v\nwant %v", text, got, want)
+		}
+	}
+	// The follow-up still lands on the savings goal.
+	r := FromWords("Save S$20k for emergencies by 2027, and I have S$6k now and can save S$700 a month.", today, nil)
+	if len(r.Goals) != 1 || r.Goals[0].StartAmount != 6_000_00 || r.Goals[0].MonthlyPlan != 700_00 {
+		t.Errorf("follow-up: %+v", r.Goals)
+	}
+}
+
+func boolInt(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
 }

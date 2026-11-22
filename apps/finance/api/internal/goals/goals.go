@@ -141,8 +141,12 @@ func balanceGoal(g store.Goal, entries []store.GoalEntry, today time.Time, payof
 	}
 
 	// Trend: least squares over check-ins (value per day). Until check-ins
-	// show a trend, the planned monthly amount stands in for it.
-	slope, ok := trend(pts)
+	// cover a few weeks (a balance corrected the day after starting is not a
+	// pace), the planned monthly amount stands in for it.
+	slope, span, ok := trend(pts)
+	if span < minTrendDays {
+		ok = false
+	}
 	if payoff {
 		slope = -slope
 	}
@@ -169,7 +173,11 @@ func balanceGoal(g store.Goal, entries []store.GoalEntry, today time.Time, payof
 	switch {
 	case len(entries) == 0 && g.MonthlyPlan == 0:
 		p.Status, p.StatusText = "no_data", "Add a check-in to start tracking"
-	case !ok || slope <= 0:
+	case !ok && hasDate:
+		p.Status, p.StatusText = "no_data", fmt.Sprintf("%s/month needed for %s — check in again in a few weeks for a forecast", money(p.NeededPerMonth), targetDate.Format("Jan 2006"))
+	case !ok:
+		p.Status, p.StatusText = "no_data", "Check in again in a few weeks to see a forecast"
+	case slope <= 0:
 		if hasDate {
 			p.Status, p.StatusText = "at_risk", "No progress yet — "+money(p.NeededPerMonth)+"/month needed"
 		} else {
@@ -207,13 +215,17 @@ func balanceGoal(g store.Goal, entries []store.GoalEntry, today time.Time, payof
 	return p
 }
 
-// trend fits value = a + b·days and returns b (per day). Needs two points
-// at least a day apart.
-func trend(pts []Point) (float64, bool) {
+// minTrendDays is how long check-ins must span before their trend is used.
+const minTrendDays = 28
+
+// trend fits value = a + b·days and returns b (per day) and the days the
+// points span. Needs two points at least a day apart.
+func trend(pts []Point) (float64, float64, bool) {
 	if len(pts) < 2 {
-		return 0, false
+		return 0, 0, false
 	}
 	t0, _ := parse(pts[0].Date)
+	var span float64
 	var n, sx, sy, sxx, sxy float64
 	for _, p := range pts {
 		t, ok := parse(p.Date)
@@ -221,6 +233,7 @@ func trend(pts []Point) (float64, bool) {
 			continue
 		}
 		x := t.Sub(t0).Hours() / 24
+		span = max(span, x)
 		y := float64(p.Value)
 		n++
 		sx += x
@@ -230,9 +243,9 @@ func trend(pts []Point) (float64, bool) {
 	}
 	den := n*sxx - sx*sx
 	if n < 2 || den < 1e-9 {
-		return 0, false
+		return 0, span, false
 	}
-	return (n*sxy - sx*sy) / den, true
+	return (n*sxy - sx*sy) / den, span, true
 }
 
 // periodOf returns the period containing t.
@@ -452,6 +465,9 @@ func money(c int64) string {
 	sign := ""
 	if c < 0 {
 		sign, c = "−", -c
+	}
+	if c >= 1000_00 {
+		c = (c + 50) / 100 * 100 // whole dollars, rounded like the UI's money()
 	}
 	d := c / 100
 	s := fmt.Sprintf("%d", d)

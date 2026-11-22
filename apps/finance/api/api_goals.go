@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math"
 	"net/http"
@@ -93,6 +94,12 @@ func (a *api) getGoal(w http.ResponseWriter, r *http.Request) {
 }
 
 // validateGoal normalises and checks a goal from the UI.
+// validDate reports whether s is a real calendar date in YYYY-MM-DD form.
+func validDate(s string) bool {
+	_, err := time.Parse("2006-01-02", s)
+	return err == nil && reDate.MatchString(s)
+}
+
 func validateGoal(g *store.Goal, today time.Time) error {
 	g.Title = strings.TrimSpace(g.Title)
 	if g.Title == "" {
@@ -117,8 +124,14 @@ func validateGoal(g *store.Goal, today time.Time) error {
 	if g.StartDate == "" {
 		g.StartDate = today.Format("2006-01-02")
 	}
-	if !reDate.MatchString(g.StartDate) || g.TargetDate != "" && !reDate.MatchString(g.TargetDate) {
-		return errors.New("dates must be YYYY-MM-DD")
+	if !validDate(g.StartDate) || g.TargetDate != "" && !validDate(g.TargetDate) {
+		return errors.New("dates must be real dates (YYYY-MM-DD)")
+	}
+	if g.TargetDate != "" && g.TargetDate <= g.StartDate {
+		return errors.New("the target date must be after the start date")
+	}
+	if g.Target < 0 || g.StartAmount < 0 || g.MonthlyPlan < 0 {
+		return errors.New("amounts can't be negative")
 	}
 	if g.Period == "" {
 		g.Period = "month"
@@ -147,6 +160,27 @@ func validateGoal(g *store.Goal, today time.Time) error {
 			return errors.New("unknown category " + c)
 		}
 	}
+	ms := g.Milestones[:0:0]
+	for _, m := range g.Milestones {
+		m.Label = strings.TrimSpace(m.Label)
+		if m.Amount != nil && *m.Amount == 0 {
+			m.Amount = nil
+		}
+		if m.Label == "" && m.Amount == nil && m.Date == "" {
+			continue // an empty row left in the form
+		}
+		if m.Label == "" {
+			return errors.New("give each milestone a name")
+		}
+		if m.Amount != nil && *m.Amount < 0 {
+			return errors.New("milestone amounts can't be negative")
+		}
+		if m.Date != "" && !validDate(m.Date) || m.DoneAt != "" && !validDate(m.DoneAt) {
+			return errors.New("milestone dates must be real dates (YYYY-MM-DD)")
+		}
+		ms = append(ms, m)
+	}
+	g.Milestones = ms
 	if g.Source == "" {
 		g.Source = "manual"
 	}
@@ -161,11 +195,17 @@ func validateGoal(g *store.Goal, today time.Time) error {
 }
 
 func (a *api) saveGoal(w http.ResponseWriter, r *http.Request) {
-	var g store.Goal
-	if err := decode(r, &g); err != nil {
+	// The UI may send back a whole goal view: its computed parts are ignored.
+	var in struct {
+		store.Goal
+		Progress json.RawMessage `json:"progress"`
+		Entries  json.RawMessage `json:"entries"`
+	}
+	if err := decode(r, &in); err != nil {
 		writeError(w, 400, err.Error())
 		return
 	}
+	g := in.Goal
 	ctx := r.Context()
 	if r.Method == http.MethodPut {
 		id, ok := pathID(r, "id")
@@ -235,8 +275,12 @@ func (a *api) addEntry(w http.ResponseWriter, r *http.Request) {
 	if e.Date == "" {
 		e.Date = a.now().Format("2006-01-02")
 	}
-	if !reDate.MatchString(e.Date) {
-		writeError(w, 400, "date must be YYYY-MM-DD")
+	if !validDate(e.Date) {
+		writeError(w, 400, "date must be a real date (YYYY-MM-DD)")
+		return
+	}
+	if e.Amount < 0 {
+		writeError(w, 400, "the amount can't be negative")
 		return
 	}
 	ctx := r.Context()

@@ -1,8 +1,9 @@
 // The goal editor, shared by "fill in a goal", Claude drafts and editing.
 import { Button, Input } from '@hub/ui-kit';
 import { Plus, X } from 'lucide-react';
+import { useState } from 'react';
 import type { Goal, GoalKind, Milestone } from './api';
-import { areaNames, kindNames, toCents, toDollars } from './format';
+import { areaNames, kindNames, toCents, toDollars, today } from './format';
 import { useCategories } from './queries';
 import { Field, selectCls, textareaCls } from './ui';
 
@@ -30,21 +31,55 @@ const kindHelp: Record<GoalKind, string> = {
   habit: 'Put in at least an amount every period — e.g. invest monthly.',
 };
 
-function Money({ label, cents, onChange, hint }: { label: string; cents: number; onChange: (c: number) => void; hint?: string }) {
+/**
+ * An amount box. It keeps what was typed; the goal gets the amount in cents,
+ * or NaN while the text isn't an amount (goalFormError then blocks saving).
+ */
+function MoneyInput({ cents, onChange, placeholder, label }: { cents: number | undefined; onChange: (c: number | undefined) => void; placeholder?: string; label?: string }) {
+  const [text, setText] = useState(() => (cents ? toDollars(cents) : ''));
+  const bad = text.trim() !== '' && !(toCents(text) >= 0);
   return (
-    <Field label={label} hint={hint}>
-      <div className="relative">
-        <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-sm text-muted-foreground">S$</span>
-        <Input
-          inputMode="decimal"
-          className="tabular pl-8"
-          defaultValue={toDollars(cents)}
-          onChange={(e) => onChange(e.target.value.trim() === '' ? 0 : toCents(e.target.value) || 0)}
-        />
-      </div>
+    <div className="relative">
+      <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-sm text-muted-foreground">S$</span>
+      <Input
+        inputMode="decimal"
+        className="tabular pl-8"
+        placeholder={placeholder}
+        aria-label={label}
+        aria-invalid={bad || undefined}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          const t = e.target.value.trim();
+          onChange(t === '' ? undefined : toCents(t) >= 0 ? toCents(t) : NaN);
+        }}
+      />
+    </div>
+  );
+}
+
+function Money({ label, cents, onChange, hint }: { label: string; cents: number; onChange: (c: number) => void; hint?: string }) {
+  const bad = Number.isNaN(cents);
+  return (
+    <Field label={label} hint={bad ? <span className="text-destructive">Type an amount, e.g. 1700, 1,700.50 or 80k</span> : hint}>
+      <MoneyInput cents={cents} onChange={(c) => onChange(c ?? 0)} />
     </Field>
   );
 }
+
+/** goalFormError is why a goal can't be saved yet, or null. */
+export function goalFormError(g: GoalDraft): string | null {
+  const k = g.kind;
+  if (!g.title.trim()) return 'Add a title.';
+  const amounts = [g.target, ...(k === 'target' || k === 'payoff' ? [g.startAmount, g.monthlyPlan] : []), ...(g.milestones ?? []).map((m) => m.amount)];
+  if (amounts.some((a) => a !== undefined && Number.isNaN(a))) return 'Fix the amount marked in red.';
+  if (k === 'payoff' ? !((g.startAmount ?? 0) > 0) : !((g.target ?? 0) > 0)) return k === 'payoff' ? "Set the balance you're paying off." : 'Set a target amount.';
+  if ((k === 'target' || k === 'payoff') && g.targetDate && g.targetDate <= (g.startDate || today())) return 'The target date must be after the start date.';
+  if ((g.milestones ?? []).some((m) => !m.label.trim() && (m.amount || m.date))) return 'Give each milestone a name.';
+  return null;
+}
+
+let rowSeq = 0; // milestone row keys
 
 const list = (s: string) =>
   s
@@ -63,6 +98,9 @@ export function GoalForm({ value, onChange }: { value: GoalDraft; onChange: (g: 
   };
   const ms = value.milestones ?? [];
   const setMs = (i: number, p: Partial<Milestone>) => set({ milestones: ms.map((m, j) => (j === i ? { ...m, ...p } : m)) });
+  // Stable row keys, so removing a row never shows its amount in the next one.
+  const [rowKeys, setRowKeys] = useState<number[]>(() => ms.map(() => rowSeq++));
+  if (rowKeys.length !== ms.length) setRowKeys(ms.map((_, i) => rowKeys[i] ?? rowSeq++));
 
   return (
     <div className="grid gap-4">
@@ -115,8 +153,15 @@ export function GoalForm({ value, onChange }: { value: GoalDraft; onChange: (g: 
       {(k === 'limit' || k === 'habit') && (
         <div className="grid gap-3 sm:grid-cols-3">
           {k === 'limit' && value.metric === 'count' ? (
-            <Field label="At most (times)">
-              <Input inputMode="numeric" defaultValue={value.target || ''} onChange={(e) => set({ target: parseInt(e.target.value, 10) || 0 })} />
+            <Field label="At most (times)" hint={Number.isNaN(value.target) ? <span className="text-destructive">Type a whole number</span> : undefined}>
+              <Input
+                inputMode="numeric"
+                defaultValue={value.target || ''}
+                onChange={(e) => {
+                  const t = e.target.value.trim();
+                  set({ target: t === '' ? 0 : /^\d+$/.test(t) ? Number(t) : NaN });
+                }}
+              />
             </Field>
           ) : (
             <Money label={k === 'limit' ? 'At most' : 'At least'} cents={value.target ?? 0} onChange={(c) => set({ target: c })} />
@@ -182,21 +227,28 @@ export function GoalForm({ value, onChange }: { value: GoalDraft; onChange: (g: 
         <Field label="Milestones" hint="Optional steps on the way; amount-based ones tick themselves.">
           <div className="flex flex-col gap-2">
             {ms.map((m, i) => (
-              <div key={i} className="grid grid-cols-[1fr_7rem_9rem_auto] gap-2 max-[520px]:grid-cols-2">
-                <Input value={m.label} placeholder="Label" onChange={(e) => setMs(i, { label: e.target.value })} />
-                <Input
-                  inputMode="decimal"
-                  placeholder="S$"
-                  defaultValue={m.amount ? toDollars(m.amount) : ''}
-                  onChange={(e) => setMs(i, { amount: e.target.value ? toCents(e.target.value) || undefined : undefined })}
-                />
-                <Input type="date" value={m.date ?? ''} onChange={(e) => setMs(i, { date: e.target.value || undefined })} />
-                <Button variant="ghost" size="icon-sm" aria-label="Remove milestone" onClick={() => set({ milestones: ms.filter((_, j) => j !== i) })}>
+              <div key={rowKeys[i] ?? i} className="grid grid-cols-[1fr_7rem_9rem_auto] gap-2 max-[520px]:grid-cols-2">
+                <Input value={m.label} placeholder="Label" aria-label="Milestone name" onChange={(e) => setMs(i, { label: e.target.value })} />
+                <MoneyInput cents={m.amount} placeholder="amount" label="Milestone amount" onChange={(c) => setMs(i, { amount: c === 0 ? undefined : c })} />
+                <Input type="date" aria-label="Milestone date" value={m.date ?? ''} onChange={(e) => setMs(i, { date: e.target.value || undefined })} />
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Remove milestone"
+                  onClick={() => {
+                    setRowKeys(rowKeys.filter((_, j) => j !== i));
+                    set({ milestones: ms.filter((_, j) => j !== i) });
+                  }}
+                >
                   <X className="size-4" />
                 </Button>
               </div>
             ))}
-            <Button variant="outline" size="sm" className="self-start" onClick={() => set({ milestones: [...ms, { label: '' }] })}>
+            {ms.some((m) => Number.isNaN(m.amount)) && <span className="text-xs text-destructive">Type each amount like 1700, 1,700.50 or 80k.</span>}
+            <Button variant="outline" size="sm" className="self-start" onClick={() => {
+                setRowKeys([...rowKeys, rowSeq++]);
+                set({ milestones: [...ms, { label: '' }] });
+              }}>
               <Plus className="size-4" /> Milestone
             </Button>
           </div>

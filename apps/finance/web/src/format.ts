@@ -23,7 +23,17 @@ export function compact(cents: number): string {
 }
 
 /** dollars ↔ cents for inputs. */
-export const toCents = (s: string): number => Math.round(parseFloat(s.replace(/[,\s$S]/g, '')) * 100);
+/**
+ * toCents reads an amount someone typed — "1700", "1,700.50", "S$ 1 700",
+ * "80k", "1.2m" — into cents. Anything else is NaN (never a silent guess).
+ */
+export function toCents(s: string): number {
+  const m = /^\s*(-)?\s*(?:S?\$)?\s*(\d(?:[\d, ]*\d)?(?:\.\d*)?|\.\d+)\s*([kKmM])?\s*$/.exec(s);
+  if (!m) return NaN;
+  const scale = m[3] ? (m[3].toLowerCase() === 'k' ? 1e3 : 1e6) : 1;
+  const n = Math.round(Number(m[2].replace(/[, ]/g, '')) * scale * 100);
+  return m[1] ? -n : n;
+}
 export const toDollars = (c: number): string => (c ? String(c / 100) : '');
 
 function parseDate(d: string): Date {

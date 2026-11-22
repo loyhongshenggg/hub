@@ -351,3 +351,100 @@ func TestMyCost(t *testing.T) {
 		t.Errorf("clear %+v", p.Transaction)
 	}
 }
+
+// TestGoalEditRoundTrip edits a goal the way the UI does: GET the goal view
+// (with its computed progress and entries), change fields, PUT it back.
+func TestGoalEditRoundTrip(t *testing.T) {
+	srv, _ := setup(t)
+	var created store.Goal
+	if code := call(t, srv, "POST", "/api/goals", map[string]any{"kind": "target", "title": "Home", "area": "home",
+		"target": 9_360_000, "startAmount": 3_750_000, "monthlyPlan": 170_000, "startDate": "2026-11-21", "targetDate": "2029-07-01",
+		"milestones": []map[string]any{{"label": "Emergency fund", "amount": 1_500_000}, {"label": "Wedding", "amount": 5_500_000}}}, &created); code != 201 {
+		t.Fatalf("create %d", code)
+	}
+	call(t, srv, "POST", "/api/goals/"+itoa(created.ID)+"/entries", map[string]any{"date": "2026-11-21", "amount": 3_750_000}, nil)
+	path := "/api/goals/" + itoa(created.ID)
+	var view map[string]any
+	call(t, srv, "GET", path, nil, &view)
+	if view["progress"] == nil || view["entries"] == nil {
+		t.Fatalf("view has no progress/entries: %v", view)
+	}
+
+	// Every field the edit form keys in.
+	view["title"] = "  My share: wedding, renovation & keys  "
+	view["why"] = "My half of our S$160k cash target."
+	view["area"] = "home"
+	view["target"] = 8_000_000
+	view["startAmount"] = 2_200_000
+	view["monthlyPlan"] = 170_000
+	view["startDate"] = "2026-11-21"
+	view["targetDate"] = "2029-07-01"
+	view["milestones"] = []map[string]any{
+		{"label": "Emergency fund", "amount": 1_500_000},
+		{"label": "", "amount": 0}, // empty row left in the form: dropped
+		{"label": "Keys", "amount": 8_000_000, "date": "2029-07-01"},
+	}
+	var got store.Goal
+	if code := call(t, srv, "PUT", path, view, &got); code != 200 {
+		t.Fatalf("edit with a full view: %d", code)
+	}
+	if got.Title != "My share: wedding, renovation & keys" || got.Why != "My half of our S$160k cash target." || got.Target != 8_000_000 ||
+		got.StartAmount != 2_200_000 || got.MonthlyPlan != 170_000 || got.TargetDate != "2029-07-01" || len(got.Milestones) != 2 ||
+		got.Milestones[1].Label != "Keys" || *got.Milestones[1].Amount != 8_000_000 || got.Milestones[1].Date != "2029-07-01" {
+		t.Errorf("saved %+v", got)
+	}
+
+	// Status buttons and ticking a milestone send the view back too.
+	call(t, srv, "GET", path, nil, &view)
+	view["status"] = "paused"
+	if code := call(t, srv, "PUT", path, view, &got); code != 200 || got.Status != "paused" {
+		t.Errorf("pause %d %s", code, got.Status)
+	}
+	call(t, srv, "GET", path, nil, &view)
+	view["status"] = "active"
+	view["milestones"] = []map[string]any{{"label": "Booked the venue", "doneAt": "2026-11-22"}}
+	if code := call(t, srv, "PUT", path, view, &got); code != 200 || got.Status != "active" || got.Milestones[0].DoneAt != "2026-11-22" {
+		t.Errorf("tick milestone %d %+v", code, got)
+	}
+
+	// Bad input is refused with a message, not saved.
+	for name, patch := range map[string]map[string]any{
+		"no title":            {"title": "   "},
+		"zero target":         {"target": 0},
+		"negative have":       {"startAmount": -1},
+		"negative plan":       {"monthlyPlan": -100},
+		"impossible date":     {"targetDate": "2029-02-30"},
+		"target before start": {"targetDate": "2026-01-01"},
+		"bad area":            {"area": "moon"},
+		"unnamed milestone":   {"milestones": []map[string]any{{"label": " ", "amount": 100}}},
+		"negative milestone":  {"milestones": []map[string]any{{"label": "x", "amount": -100}}},
+		"bad milestone date":  {"milestones": []map[string]any{{"label": "x", "date": "2027-13-01"}}},
+		"unknown field":       {"tagret": 1},
+	} {
+		call(t, srv, "GET", path, nil, &view)
+		for k, v := range patch {
+			view[k] = v
+		}
+		var e struct{ Error string }
+		if code := call(t, srv, "PUT", path, view, &e); code != 400 || e.Error == "" {
+			t.Errorf("%s: %d %q", name, code, e.Error)
+		}
+	}
+	call(t, srv, "GET", path, nil, &got)
+	if got.Target != 8_000_000 || got.Title != "My share: wedding, renovation & keys" {
+		t.Errorf("a refused edit changed the goal: %+v", got)
+	}
+
+	// Check-ins: amount and date are keyed in.
+	if code := call(t, srv, "POST", path+"/entries", map[string]any{"date": "2026-02-30", "amount": 100}, nil); code != 400 {
+		t.Errorf("impossible check-in date: %d", code)
+	}
+	if code := call(t, srv, "POST", path+"/entries", map[string]any{"amount": -100}, nil); code != 400 {
+		t.Errorf("negative check-in: %d", code)
+	}
+	var v struct{ Entries []store.GoalEntry }
+	if code := call(t, srv, "POST", path+"/entries", map[string]any{"date": "2026-12-01", "amount": 4_000_000, "note": "Dec"}, &v); code != 200 ||
+		len(v.Entries) != 2 {
+		t.Errorf("check-in %d %+v", code, v.Entries)
+	}
+}

@@ -144,3 +144,32 @@ func TestPausedAndAchievedLabels(t *testing.T) {
 }
 
 func ptr(v int64) *int64 { return &v }
+
+func TestTargetEarlyCheckIn(t *testing.T) {
+	// A balance corrected the day after starting is not a pace: the plan
+	// stands in until check-ins cover a few weeks.
+	g := store.Goal{Kind: Target, Target: 80_000_00, StartAmount: 22_000_00, StartDate: "2026-11-20", TargetDate: "2029-07-01", MonthlyPlan: 1_700_00, Status: "active"}
+	entries := []store.GoalEntry{{Date: "2026-11-21", Amount: 40_000_00}}
+	p := Compute(g, entries, nil, today, "")
+	if !strings.HasPrefix(p.StatusText, "At S$1,700/month") || p.ProjectedDate[:4] < "2028" {
+		t.Errorf("plan should drive an early forecast: %s %s %q", p.Status, p.ProjectedDate, p.StatusText)
+	}
+	// Without a plan there's no forecast yet, only what's needed.
+	g.MonthlyPlan = 0
+	if p := Compute(g, entries, nil, today, ""); p.Status != "no_data" || !strings.Contains(p.StatusText, "/month needed for Jul 2029") {
+		t.Errorf("no plan: %s %q", p.Status, p.StatusText)
+	}
+	// After a month of check-ins the trend counts.
+	entries = append(entries, store.GoalEntry{Date: "2026-12-21", Amount: 41_700_00})
+	if p := Compute(g, entries, nil, today.AddDate(0, 1, 0), ""); p.Status == "no_data" || p.ProjectedDate == "" {
+		t.Errorf("a month in: %s %q", p.Status, p.StatusText)
+	}
+}
+
+func TestMoneyRoundsLikeTheUI(t *testing.T) {
+	for c, want := range map[int64]string{1_793_80: "S$1,794", 1_793_40: "S$1,793", 999_99: "S$999.99", 12_50: "S$12.50", 80_000_00: "S$80,000"} {
+		if got := money(c); got != want {
+			t.Errorf("money(%d) = %s, want %s", c, got, want)
+		}
+	}
+}
