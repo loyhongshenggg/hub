@@ -190,8 +190,9 @@ func (d *Driver) spawn(inst *instance, p *proc, logs *logBuffer) error {
 	cmd.Dir = p.dir
 	cmd.Env = p.env
 	// Own process group, so stopping kills children (go run → binary, vite
-	// → workers). Pdeathsig covers the shell if the core dies abruptly.
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pdeathsig: syscall.SIGTERM}
+	// → workers). On Linux, Pdeathsig also covers the shell if the core dies
+	// abruptly (sysproc_*.go).
+	cmd.SysProcAttr = sysProcAttr()
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err

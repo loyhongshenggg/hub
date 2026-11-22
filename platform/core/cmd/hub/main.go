@@ -40,7 +40,7 @@ var version = "dev" // set with -ldflags "-X main.version=…"
 const usage = `hub — local multi-app platform
 
 Usage:
-  hub serve [--addr 127.0.0.1:7000] [--root DIR] [--data DIR] [--shell-dev URL] [--session]
+  hub serve [--addr 127.0.0.1:7000] [--root DIR] [--data DIR] [--shell-dev URL] [--session] [--native]
   hub stop
   hub apps [ls]
   hub apps start|restart <id> [--dev] [--no-wait]
@@ -147,6 +147,7 @@ func serve(ctx context.Context, args []string) error {
 	data := fs.String("data", os.Getenv("HUB_DATA"), "data folder (default ~/.local/share/hub)")
 	shellDev := fs.String("shell-dev", "", "proxy the shell to this dev server URL instead of the embedded build")
 	sess := fs.Bool("session", false, "desktop session: on exit stop all apps, and restart them on the next start")
+	native := fs.Bool("native", false, "no Docker: run apps as host processes from their dev: block (macOS release, ADR-0012)")
 	if _, err := flags(fs, args); err != nil {
 		return err
 	}
@@ -157,14 +158,6 @@ func serve(ctx context.Context, args []string) error {
 	cfg.ShellDevURL = *shellDev
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	drv, err := newDriver(cfg)
-	if err != nil {
-		return err
-	}
-	defer drv.Close()
-	if err := drv.Prepare(ctx); err != nil {
-		return err
-	}
 	st, err := store.Open(ctx, cfg.DBPath())
 	if err != nil {
 		return err
@@ -177,6 +170,21 @@ func serve(ctx context.Context, args []string) error {
 		return err
 	}
 	defer devDrv.Close() // dev processes don't outlive the core
+
+	// Run mode uses Docker, except with --native, where the host-process
+	// driver runs every app (from its dev: block) and Docker isn't needed.
+	var drv runtime.Driver = devDrv
+	if !*native {
+		dd, err := newDriver(cfg)
+		if err != nil {
+			return err
+		}
+		defer dd.Close()
+		if err := dd.Prepare(ctx); err != nil {
+			return err
+		}
+		drv = dd
+	}
 
 	// The manager outlives the shutdown signal so a session can still stop
 	// its apps; life ends when serve returns.

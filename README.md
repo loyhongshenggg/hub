@@ -7,9 +7,16 @@ http://hub.localhost:7000          the shell: dock, home grid, tabs, logs
 http://<id>.hub.localhost:7000     each app, on its own origin (framed by the shell)
 ```
 
-## Install on Windows
+## Install
 
-**Finance** (goals, spending insights and credit-card statement import for Singapore) is released as a Windows download. It runs entirely on your PC, inside its own small Linux system (WSL). Your data never leaves your machine.
+**Finance** (goals, spending insights and credit-card statement import for Singapore) runs entirely on your computer. Your data never leaves it. Downloads are on the [latest release](../../releases/latest).
+
+- [Windows](#windows)
+- [macOS](#macos)
+
+### Windows
+
+It runs inside its own small Linux system (WSL).
 
 **You need:**
 
@@ -41,6 +48,38 @@ Closing the Finance window stops it completely. Opening the icon starts it again
 | See what went wrong                                                                                                                 | Read `%LOCALAPPDATA%\finance\core.log` and `launcher.log`                                                        |
 | Uninstall (**deletes your Finance data**)                                                                                           | `wsl --unregister finance`, then delete the Desktop icon and `%LOCALAPPDATA%\finance`                            |
 
+### macOS
+
+Finance runs as a normal Mac program; no Docker or Linux needed.
+
+**You need:**
+
+- macOS 13 or newer, on Apple Silicon or Intel
+- [Homebrew](https://brew.sh)
+- Google Chrome or Microsoft Edge
+
+**Steps (in Terminal):**
+
+1. **Install Finance:**
+
+   ```bash
+   brew tap loyhongshenggg/hub https://github.com/loyhongshenggg/hub
+   brew install finance
+   ```
+
+   Homebrew also installs the OCR tools Finance uses to read statements.
+
+2. **Open it once from Terminal:** run `finance`. This adds **Finance** to your Applications folder and the Dock. After that, open it like any other app.
+
+Closing the Finance window stops it completely. Quitting it from the Dock does too.
+
+| To                                        | Do (in Terminal)                                                                                    |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Update to the newest version              | `brew upgrade finance`. Your data is kept.                                                          |
+| Stop it from Terminal                     | `finance stop`                                                                                      |
+| See what went wrong                       | Read `~/Library/Application Support/Finance/core.log` and `launcher.log`                            |
+| Uninstall (**deletes your Finance data**) | `finance remove-app`, `brew uninstall finance`, then delete `~/Library/Application Support/Finance` |
+
 Claude features in Finance are optional. They need your own Anthropic API key (Finance → Settings) and have a monthly spending cap.
 
 ## Run it (developers)
@@ -55,11 +94,12 @@ Apps keep running when the core stops and are picked up again on the next start.
 
 ### Releasing
 
-A release is a WSL distribution file with the hub and a chosen set of apps ([ADR-0011](docs/adr/0011-releases.md)). `releases/<name>.env` lists what ships (Finance: `releases/finance.env`).
+A release ships the hub with a chosen set of apps: a WSL distribution file for Windows ([ADR-0011](docs/adr/0011-releases.md)) and native Mac builds installed with Homebrew ([ADR-0012](docs/adr/0012-macos-release.md)). `releases/<name>.env` lists what ships (Finance: `releases/finance.env`).
 
 ```bash
 RELEASE_REPO=loyhongshenggg/hub tools/release/build.sh finance 0.1.0   # local build → dist/release/finance/
-git tag finance-v0.1.0 && git push origin finance-v0.1.0           # GitHub Actions builds and publishes it
+RELEASE_REPO=loyhongshenggg/hub tools/release/macos/build.sh finance 0.1.0   # Mac tarballs (TARGETS=linux/amd64 to smoke-test here)
+git tag finance-v0.1.0 && git push origin finance-v0.1.0           # GitHub Actions builds, tests on a Mac, publishes, updates Formula/
 ```
 
 ### Desktop icon (Windows)

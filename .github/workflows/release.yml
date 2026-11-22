@@ -1,5 +1,7 @@
-# Builds and publishes a Windows release when a tag <release>-v<version> is
-# pushed, e.g. finance-v0.1.0 (releases/finance.env). docs/adr/0011-releases.md
+# Builds and publishes a release when a tag <release>-v<version> is pushed,
+# e.g. finance-v0.2.0 (releases/finance.env):
+#   Windows: <name>.wsl + update bundle (docs/adr/0011-releases.md)
+#   macOS:   <name>-macos-<arch>.tar.gz + Formula/<name>.rb (docs/adr/0012-macos-release.md)
 name: release
 
 on:
@@ -7,23 +9,26 @@ on:
     tags: ['*-v*']
 
 permissions:
-  contents: write # create the GitHub release
+  contents: write # create the GitHub release, update Formula/
   id-token: write # sign the build attestations
   attestations: write
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    outputs:
+      rel: ${{ steps.tag.outputs.rel }}
+      version: ${{ steps.tag.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Release name and version from the tag
+        id: tag
         run: |
-          echo "REL=${GITHUB_REF_NAME%-v*}" >>"$GITHUB_ENV"
-          echo "VERSION=${GITHUB_REF_NAME##*-v}" >>"$GITHUB_ENV"
-          test -f "releases/${GITHUB_REF_NAME%-v*}.env" || { echo "::error::no releases/${GITHUB_REF_NAME%-v*}.env"; exit 1; }
-
+          rel="${GITHUB_REF_NAME%-v*}" version="${GITHUB_REF_NAME##*-v}"
+          test -f "releases/$rel.env" || { echo "::error::no releases/$rel.env"; exit 1; }
+          echo "rel=$rel" >>"$GITHUB_OUTPUT"
+          echo "version=$version" >>"$GITHUB_OUTPUT"
       - uses: actions/setup-go@v5
         with:
           go-version-file: platform/core/go.mod
@@ -34,43 +39,112 @@ jobs:
           node-version: 26
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-
       - name: Check
+        env:
+          REL: ${{ steps.tag.outputs.rel }}
         run: |
           . "releases/$REL.env"
           projects="core desktop @hub/shell"
           for app in $APPS; do projects="$projects $app ${app}-api @hub/${app}-web"; done
           pnpm nx run-many -t lint,test,typecheck --projects="$(echo $projects | tr ' ' ',')" --outputStyle=static
-
-      - name: Build (from the untouched checkout; audits it is a clean copy)
+      - name: Build (from the untouched checkout; audited clean copies)
+        env:
+          REL: ${{ steps.tag.outputs.rel }}
+          VERSION: ${{ steps.tag.outputs.version }}
         run: |
           test -z "$(git status --porcelain)" || { git status --short; echo "::error::checkout is modified"; exit 1; }
           tools/release/build.sh "$REL" "$VERSION"
+          tools/release/macos/build.sh "$REL" "$VERSION"
+          tools/release/macos/formula.sh "$REL" "$VERSION"
+          d="dist/release/$REL"
+          (cd "$d" && sha256sum "$REL.wsl" "$REL-update.tar.gz" "$REL"-macos-*.tar.gz >SHA256SUMS)
+          mkdir -p out && cp "$d/$REL.wsl" "$d/$REL-update.tar.gz" "$d"/"$REL"-macos-*.tar.gz "$d/SHA256SUMS" "Formula/$REL.rb" out/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: out/
+          retention-days: 7
 
+  macos-test:
+    needs: build
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: out
+      - name: Install from the release files and check the app runs natively
+        env:
+          REL: ${{ needs.build.outputs.rel }}
+        run: |
+          brew install poppler tesseract
+          arch="$(uname -m | sed 's/x86_64/amd64/')"
+          mkdir -p t && tar -C t -xzf "out/$REL-macos-$arch.tar.gz"
+          cd "t/$REL"
+          xattr -l bin/hub | grep -q quarantine && { echo "::error::quarantined"; exit 1; } || true
+          . ./release.env
+          ./bin/hub serve --native --session --root "$PWD" --addr "127.0.0.1:$PORT" --data "$RUNNER_TEMP/data" >"$RUNNER_TEMP/core.log" 2>&1 &
+          for i in $(seq 60); do
+            curl -sf -o /dev/null -H "Host: $(ls apps | head -1).hub.localhost:$PORT" "http://127.0.0.1:$PORT/healthz" && break
+            sleep 1
+          done
+          for app in $(ls apps); do
+            curl -sf -o /dev/null -H "Host: $app.hub.localhost:$PORT" "http://127.0.0.1:$PORT/healthz" || { cat "$RUNNER_TEMP/core.log"; echo "::error::$app didn't start"; exit 1; }
+            echo "$app: running natively"
+          done
+          command -v pdftoppm tesseract
+          HUB_ADDR="127.0.0.1:$PORT" ./bin/hub stop
+
+  publish:
+    needs: [build, macos-test]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: out
       - uses: actions/attest-build-provenance@v3
         with:
           subject-path: |
-            dist/release/${{ env.REL }}/${{ env.REL }}.wsl
-            dist/release/${{ env.REL }}/${{ env.REL }}-update.tar.gz
-
-      - name: Publish
+            out/*.wsl
+            out/*.tar.gz
+      - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
+          REL: ${{ needs.build.outputs.rel }}
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
           . "releases/$REL.env"
-          d="dist/release/$REL"
           cat >notes.md <<NOTES
-          **Install on Windows:** download \`$REL.wsl\` below and double-click it, then open **$TITLE** from the Desktop icon. Full steps: [README › Install](https://github.com/$GITHUB_REPOSITORY#install-on-windows).
+          **Windows:** download \`$REL.wsl\` below and double-click it, then open **$TITLE** from the Desktop icon.
 
-          **Update an existing install** (keeps your data): \`wsl -d $REL -e /opt/hub/update.sh\`
+          **macOS:** \`brew tap $GITHUB_REPOSITORY https://github.com/$GITHUB_REPOSITORY && brew install $REL\`, then run \`$REL\`.
 
-          **Verify the download:** \`gh attestation verify $REL.wsl --repo $GITHUB_REPOSITORY\`, or compare with \`SHA256SUMS\`.
+          Full steps: [README › Install](https://github.com/$GITHUB_REPOSITORY#install). Updates keep your data (Windows: \`wsl -d $REL -e /opt/hub/update.sh\`, macOS: \`brew upgrade $REL\`).
+
+          **Verify a download:** \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`, or compare with \`SHA256SUMS\`.
           NOTES
-          files=("$d/$REL.wsl" "$d/$REL-update.tar.gz" "$d/SHA256SUMS")
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            # Re-run for the same tag (e.g. the tag was moved): replace the files.
-            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
-            gh release edit "$GITHUB_REF_NAME" --title "$TITLE $VERSION" --notes-file notes.md
+          tag="$REL-v$VERSION"
+          files=(out/*.wsl out/*.tar.gz out/SHA256SUMS)
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "${files[@]}" --clobber
+            gh release edit "$tag" --title "$TITLE $VERSION" --notes-file notes.md
           else
-            gh release create "$GITHUB_REF_NAME" "${files[@]}" --title "$TITLE $VERSION" --notes-file notes.md
+            gh release create "$tag" "${files[@]}" --title "$TITLE $VERSION" --notes-file notes.md
           fi
+      - name: Update the Homebrew formula on main
+        env:
+          REL: ${{ needs.build.outputs.rel }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          mkdir -p Formula && cp "out/$REL.rb" "Formula/$REL.rb"
+          git diff --quiet -- Formula && git ls-files --error-unmatch "Formula/$REL.rb" >/dev/null 2>&1 && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "Formula/$REL.rb"
+          git commit -m "Formula: $REL $VERSION"
+          git push origin main

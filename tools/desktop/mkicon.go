@@ -1,5 +1,5 @@
 // Command desktop draws the hub logo (platform/shell/public/favicon.svg: a
-// blue rounded tile with four white squares) into a Windows .ico, with
+// blue rounded tile with four white squares) into a Windows .ico or a macOS .icns, with
 // antialiasing, so no image tools are needed.
 package main
 
@@ -12,6 +12,7 @@ import (
 	"image/png"
 	"math"
 	"os"
+	"strings"
 )
 
 type rrect struct{ x, y, w, h, r, alpha float64 }
@@ -98,12 +99,41 @@ func ICO(sizes []int) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
+// ICNS packs PNG images into a macOS icon file (OSType + big-endian length per entry).
+func ICNS() ([]byte, error) {
+	types := []struct {
+		kind string
+		size int
+	}{{"icp4", 16}, {"icp5", 32}, {"icp6", 64}, {"ic07", 128}, {"ic08", 256}, {"ic09", 512}, {"ic10", 1024}}
+	var body bytes.Buffer
+	for _, t := range types {
+		var buf bytes.Buffer
+		if err := png.Encode(&buf, Draw(t.size)); err != nil {
+			return nil, err
+		}
+		body.WriteString(t.kind)
+		binary.Write(&body, binary.BigEndian, uint32(8+buf.Len()))
+		body.Write(buf.Bytes())
+	}
+	var out bytes.Buffer
+	out.WriteString("icns")
+	binary.Write(&out, binary.BigEndian, uint32(8+body.Len()))
+	out.Write(body.Bytes())
+	return out.Bytes(), nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./tools/desktop <out.ico>")
+		fmt.Fprintln(os.Stderr, "usage: go run ./tools/desktop <out.ico|out.icns>")
 		os.Exit(2)
 	}
-	data, err := ICO([]int{16, 24, 32, 48, 64, 128, 256})
+	var data []byte
+	var err error
+	if strings.HasSuffix(os.Args[1], ".icns") {
+		data, err = ICNS()
+	} else {
+		data, err = ICO([]int{16, 24, 32, 48, 64, 128, 256})
+	}
 	if err == nil {
 		err = os.WriteFile(os.Args[1], data, 0o644)
 	}

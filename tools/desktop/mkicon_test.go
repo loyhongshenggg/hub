@@ -41,3 +41,19 @@ func TestICO(t *testing.T) {
 		t.Errorf("first image isn't a PNG: %v", err)
 	}
 }
+
+func TestICNS(t *testing.T) {
+	data, err := ICNS()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data[:4]) != "icns" || int(binary.BigEndian.Uint32(data[4:8])) != len(data) {
+		t.Fatalf("bad header")
+	}
+	if string(data[8:12]) != "icp4" {
+		t.Errorf("first entry %q", data[8:12])
+	}
+	if _, err := png.Decode(bytes.NewReader(data[16 : 8+binary.BigEndian.Uint32(data[12:16])])); err != nil {
+		t.Errorf("first entry isn't a PNG: %v", err)
+	}
+}

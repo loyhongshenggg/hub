@@ -70,7 +70,8 @@ Personal, locally hosted, Lark-style platform: one shell UI hosts many small app
   - [ ] CPU/RAM per app
   - [x] Desktop icon: start on click, stop on close (ADR-0009, 2026-11-21) — `pnpm nx run desktop:install`
   - [ ] Start on Windows login (ADR-0010)
-  - [x] Windows release `finance.wsl` (WSL distribution file, clean-copy audit, CI on tag) — ADR-0011 (2026-11-22); publish pending (repo `hs-hub`)
+  - [x] Windows release `finance.wsl` (WSL distribution file, clean-copy audit, CI on tag) — ADR-0011 (2026-11-22), published as finance-v0.1.0 (loyhongshenggg/hub)
+  - [x] macOS release: native (`hub serve --native`), Homebrew formula in `Formula/`, tested on a CI Mac — ADR-0012 (2026-11-22)
 - [ ] Phase 3 — platform services
 
 <!-- nx configuration start-->
