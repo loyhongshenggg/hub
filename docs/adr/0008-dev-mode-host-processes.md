@@ -21,7 +21,7 @@ For restarting Go on change, [air](https://github.com/air-verse/air) is the usua
 ## Decision
 
 - Manifest v1 gains an optional `dev:` block (additive, no version bump): `route` + `processes[]` with `name`, `dir`, `command`, `watch`.
-- The core's `process` driver runs each process as `/bin/sh -c` in its own process group. Each gets a free port in `$PORT` and sees its siblings' ports as `$HUB_PORT_<NAME>`, plus `HUB_APP_ID`, `HUB_APP_URL`, `HUB_CORE_URL`, `HUB_DEV=1`, `HUB_DATA_DIR` (`~/.local/share/hub/dev/<id>/data`).
+- The core's `process` driver runs each process as `/bin/sh -c` in its own process group. Each gets a free port in `$PORT` and sees its siblings' ports as `$HUB_PORT_<NAME>`, plus `HUB_APP_ID`, `HUB_APP_URL`, `HUB_CORE_URL`, `HUB_DEV=1`, `HUB_DATA_DIR`, `HUB_BIND=127.0.0.1` (appkit listens on loopback only) (`~/.local/share/hub/dev/<id>/data`).
 - The gateway routes `<id>.hub.localhost` to the `route` process. Health uses the same `health.path` (Vite proxies it to the API), with at least 2 minutes for the first compile.
 - A process with `watch` patterns restarts when a matching file changes. If it exits (e.g. a compile error) it waits for the next change instead of failing the app. A process without `watch` that exits puts the app in `error`.
 - Dev instances don't outlive the core: it stops them on shutdown. Pid files with process start times let the next core kill groups left by a crash. Linux never reuses a PID while it is a live process group ID, so surviving members are safe to kill even when the leader is gone.

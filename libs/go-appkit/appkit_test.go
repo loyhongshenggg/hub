@@ -109,8 +109,16 @@ func TestEnv(t *testing.T) {
 	t.Setenv("DATA_DIR", "")
 	t.Setenv("HUB_DATA_DIR", "/tmp/dev-data")
 	c := LoadConfig()
+	t.Setenv("HUB_BIND", "")
 	if c.AppID != "notes" || c.Port != "8080" || c.DataDir != "/tmp/dev-data" {
 		t.Errorf("config = %+v", c)
+	}
+	if c := LoadConfig(); c.Bind != "" {
+		t.Errorf("Bind should default to all interfaces: %+v", c)
+	}
+	t.Setenv("HUB_BIND", "127.0.0.1")
+	if c := LoadConfig(); c.Bind != "127.0.0.1" {
+		t.Errorf("HUB_BIND: %+v", c)
 	}
 	t.Setenv("DATA_DIR", "/data2")
 	if c := LoadConfig(); c.DataDir != "/data2" {

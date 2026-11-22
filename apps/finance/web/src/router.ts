@@ -1,5 +1,5 @@
 // A tiny hash router: #/<page>[/<id>][?query].
-import { startTransition, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export type Page = 'overview' | 'goals' | 'transactions' | 'import' | 'settings';
 
@@ -9,7 +9,7 @@ export interface Route {
   q: URLSearchParams;
 }
 
-const pages: Page[] = ['overview', 'goals', 'transactions', 'import', 'settings'];
+export const pages: Page[] = ['overview', 'goals', 'transactions', 'import', 'settings'];
 
 export function parse(hash: string): Route {
   const [path, query] = hash.replace(/^#\/?/, '').split('?');
@@ -39,10 +39,14 @@ export function go(page: Page, id?: string | number, q?: Record<string, string |
   else window.location.hash = h;
 }
 
+/**
+ * The current route, updated urgently on every hash change so the tab bar
+ * reacts at once. Render page content from useDeferredValue(route) (app.tsx).
+ */
 export function useRoute(): Route {
   const [route, setRoute] = useState<Route>(() => parse(window.location.hash));
   useEffect(() => {
-    const on = () => startTransition(() => setRoute(parse(window.location.hash)));
+    const on = () => setRoute(parse(window.location.hash));
     window.addEventListener('hashchange', on);
     return () => window.removeEventListener('hashchange', on);
   }, []);

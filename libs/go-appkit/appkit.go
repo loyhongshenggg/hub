@@ -30,6 +30,10 @@ type Config struct {
 	AppURL  string // HUB_APP_URL, browser URL of this app
 	CoreURL string // HUB_CORE_URL, browser URL of the hub shell
 	Port    string // PORT, default 8080 — must match runtime.port in the manifest
+	// Bind is the address to listen on: HUB_BIND, set to 127.0.0.1 by the
+	// core for host processes (Dev mode, native releases). Empty = all
+	// interfaces, as a container needs.
+	Bind string
 	// DataDir holds persistent files: DATA_DIR, else HUB_DATA_DIR (set by
 	// the core in dev mode), else /data (the volume in the app's image).
 	DataDir string
@@ -42,6 +46,7 @@ func LoadConfig() Config {
 		AppURL:  os.Getenv("HUB_APP_URL"),
 		CoreURL: os.Getenv("HUB_CORE_URL"),
 		Port:    Env("PORT", "8080"),
+		Bind:    os.Getenv("HUB_BIND"),
 		DataDir: Env("DATA_DIR", Env("HUB_DATA_DIR", "/data")),
 	}
 }
@@ -130,7 +135,7 @@ func (a *App) HealthHandler() http.Handler {
 func (a *App) Run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return a.Serve(ctx, net.JoinHostPort("", a.Config.Port))
+	return a.Serve(ctx, net.JoinHostPort(a.Config.Bind, a.Config.Port))
 }
 
 // Serve is Run with an explicit context and address (handy in tests).

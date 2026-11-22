@@ -153,6 +153,9 @@ func (d *Driver) Start(ctx context.Context, in runtime.Instance, _ runtime.Start
 		"HUB_CORE_URL="+d.opts.CoreURL,
 		"HUB_DEV=1",
 		"HUB_DATA_DIR="+dataDir,
+		// Host processes are reached only through the gateway: listen on
+		// loopback, not on the LAN (appkit reads this).
+		"HUB_BIND=127.0.0.1",
 	)
 	for name, port := range ports {
 		base = append(base, envName(name)+"="+strconv.Itoa(port))

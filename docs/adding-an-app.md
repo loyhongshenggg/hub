@@ -108,7 +108,7 @@ Schema: [`libs/manifest/schema/v1.schema.json`](../libs/manifest/schema/v1.schem
 | `ui.keepAlive`        |              | `true`           | Keep the iframe loaded when switching tabs                                                                                                                                              |
 | `autoStart`           |              | `false`          | Start with the hub (users can override per app in the UI)                                                                                                                               |
 | `dev.route`           |              | first process    | Process the gateway routes to in Dev mode                                                                                                                                               |
-| `dev.processes[]`     | for Dev mode |                  | `name`, `command` (`/bin/sh -c`), optional `dir` and `watch` (file patterns that restart it). Each gets `$PORT`; siblings' ports are in `$HUB_PORT_<NAME>`; data dir in `$HUB_DATA_DIR` |
+| `dev.processes[]`     | for Dev mode |                  | `name`, `command` (`/bin/sh -c`), optional `dir` and `watch` (file patterns that restart it). Each gets `$PORT`; siblings' ports are in `$HUB_PORT_<NAME>`; data dir in `$HUB_DATA_DIR`; listen on `$HUB_BIND` (127.0.0.1; appkit does) |
 
 Invalid manifests appear on the Home page with the exact problem; `hub validate <id>` prints the same.
 

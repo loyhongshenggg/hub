@@ -12,6 +12,12 @@ import { Empty, ErrorNote, Field, Meter, Money, Section, StatusChip, textareaCls
 export function GoalsPage({ route }: { route: Route }) {
   const { data: goals = [], isLoading } = useGoals();
   const [composing, setComposing] = useState(route.id === 'new');
+  // The page stays mounted (app.tsx), so a later #/goals/new must open it too.
+  const [seenId, setSeenId] = useState(route.id);
+  if (route.id !== seenId) {
+    setSeenId(route.id);
+    if (route.id === 'new') setComposing(true);
+  }
   const open = route.id && route.id !== 'new' ? Number(route.id) : null;
 
   const active = goals.filter((g) => g.status === 'active');

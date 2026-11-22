@@ -1,12 +1,26 @@
 import { Button, cn, Input, Sheet, SheetContent, SheetTitle } from '@hub/ui-kit';
 import { AlertCircle, Download, Plus, Search, Users } from 'lucide-react';
-import { useDeferredValue, useState } from 'react';
-import { api, type Kind, type Txn } from './api';
+import { useDeferredValue, useEffect, useState } from 'react';
+import { api, type Kind, type Txn, type TxnQuery } from './api';
 import { money, monthName, plural, toCents, today, txnKindNames } from './format';
 import { useCategories, useInvalidateLedger, useOverview, useTxns } from './queries';
 import { go, type Route } from './router';
 import { TxnList, TxnSheet } from './sheets';
 import { ErrorNote, Field, selectCls } from './ui';
+
+/** The list query for a #/transactions route (also prefetched by app.tsx). */
+export function txnQueryFor(q: URLSearchParams, search = q.get('q') ?? ''): TxnQuery {
+  const month = q.get('month') ?? '';
+  return {
+    month,
+    category: q.get('category') ?? '',
+    kind: q.get('kind') ?? '',
+    review: q.get('review') === '1',
+    split: q.get('split') === '1',
+    q: search,
+    limit: month ? undefined : 500,
+  };
+}
 
 export function TransactionsPage({ route }: { route: Route }) {
   const q = route.q;
@@ -19,9 +33,17 @@ export function TransactionsPage({ route }: { route: Route }) {
   const deferred = useDeferredValue(search);
   const cats = useCategories();
   const { data: ov } = useOverview();
-  const { data: txns = [], isFetching } = useTxns({ month, category, kind, review, split: shared, q: deferred, limit: month ? undefined : 500 });
+  const { data: txns = noTxns, isFetching } = useTxns(txnQueryFor(q, deferred));
   const [edit, setEdit] = useState<Txn | null>(null);
   const [adding, setAdding] = useState(false);
+  // The page stays mounted while hidden (app.tsx): close its sheets on leaving.
+  useEffect(
+    () => () => {
+      setEdit(null);
+      setAdding(false);
+    },
+    [],
+  );
   const set = (p: Record<string, string | boolean | undefined>) =>
     go('transactions', undefined, { month, category, kind, review, split: shared, q: search, ...p }, true);
 
@@ -119,6 +141,8 @@ export function TransactionsPage({ route }: { route: Route }) {
     </div>
   );
 }
+
+const noTxns: Txn[] = [];
 
 function AddSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const cats = useCategories();

@@ -2,7 +2,7 @@
 // transaction editor.
 import { Button, Input, Sheet, SheetContent, SheetDescription, SheetTitle, Switch } from '@hub/ui-kit';
 import { AlertCircle, Globe, Pencil, PenLine, RotateCcw, Trash2, Users } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { api, type Kind, type Txn } from './api';
 import { RankedBars } from './charts';
 import { date, money, monthName, plural, toCents, toDollars, txnKindNames } from './format';
@@ -19,17 +19,18 @@ export interface SpendScope {
 
 export function SpendSheet({ scope, onClose }: { scope: SpendScope | null; onClose: () => void }) {
   const [edit, setEdit] = useState<Txn | null>(null);
+  useEffect(() => () => setEdit(null), []); // page hidden (app.tsx): close
   return (
     <>
       <Sheet open={!!scope} onOpenChange={(o) => !o && onClose()}>
-        <SheetContent className="overflow-y-auto p-5 sm:max-w-xl">{scope && <SpendDetail scope={scope} onEdit={setEdit} />}</SheetContent>
+        <SheetContent className="overflow-y-auto p-5 sm:max-w-xl">{scope && <SpendDetail scope={scope} onEdit={setEdit} onClose={onClose} />}</SheetContent>
       </Sheet>
       <TxnSheet txn={edit} onClose={() => setEdit(null)} />
     </>
   );
 }
 
-function SpendDetail({ scope, onEdit }: { scope: SpendScope; onEdit: (t: Txn) => void }) {
+function SpendDetail({ scope, onEdit, onClose }: { scope: SpendScope; onEdit: (t: Txn) => void; onClose: () => void }) {
   const cats = useCategories();
   const { data: txns = [] } = useTxns({ month: scope.month, category: scope.category, merchant: scope.merchant, spending: true });
   const total = txns.reduce((s, t) => s + (t.myAmount ?? t.amount), 0);
@@ -70,6 +71,7 @@ function SpendDetail({ scope, onEdit }: { scope: SpendScope; onEdit: (t: Txn) =>
       <a
         className="text-sm text-primary underline-offset-4 hover:underline"
         href={href('transactions', undefined, { month: scope.month, category: scope.category, q: scope.merchant })}
+        onClick={onClose}
       >
         Open in Transactions
       </a>
@@ -77,50 +79,59 @@ function SpendDetail({ scope, onEdit }: { scope: SpendScope; onEdit: (t: Txn) =>
   );
 }
 
-export function TxnList({ txns, onPick, showCategory }: { txns: Txn[]; onPick: (t: Txn) => void; showCategory?: boolean }) {
-  const cats = useCategories();
+/**
+ * TxnList is memoised (and so is each row): pages re-render on every
+ * keystroke or sheet toggle, and a long list shouldn't re-render with them.
+ * Pass a stable onPick (e.g. a state setter).
+ */
+export const TxnList = memo(function TxnList({ txns, onPick, showCategory }: { txns: Txn[]; onPick: (t: Txn) => void; showCategory?: boolean }) {
   if (txns.length === 0) return <p className="py-4 text-sm text-muted-foreground">Nothing here.</p>;
   return (
     <ul className="divide-y rounded-lg border">
-      {txns.map((t) => {
-        const cat = cats.get(t.category);
-        return (
-          <li key={t.id}>
-            <button type="button" onClick={() => onPick(t)} className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-accent">
-              <span className="tabular w-14 shrink-0 text-xs text-muted-foreground">{date(t.date)}</span>
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="flex items-center gap-1.5">
-                  <span className="truncate font-medium">{t.merchant || t.raw}</span>
-                  {t.needsReview && <AlertCircle className="size-3.5 shrink-0 text-[var(--warn)]" aria-label="Check this one" />}
-                  {t.foreign && <Globe className="size-3.5 shrink-0 text-muted-foreground" aria-label="Foreign" />}
-                </span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {showCategory && t.category ? (
-                    <span className="mr-1.5 inline-flex items-center gap-1">
-                      <Swatch slot={cat.slot} className="size-2" />
-                      {cat.name} ·
-                    </span>
-                  ) : null}
-                  {t.kind !== 'purchase' ? `${txnKindNames[t.kind]} · ` : ''}
-                  {t.raw}
-                </span>
-              </span>
-              <span className="flex flex-col items-end">
-                <Money cents={t.myAmount ?? t.amount} className={t.excluded ? 'text-muted-foreground line-through' : ''} />
-                {t.myAmount !== t.amount ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                    {t.othersShare ? <Users className="size-3" aria-label="Shared" /> : <PenLine className="size-3" aria-label="Your cost, edited" />} of{' '}
-                    {money(t.amount)}
-                  </span>
-                ) : null}
-              </span>
-            </button>
-          </li>
-        );
-      })}
+      {txns.map((t) => (
+        <TxnRow key={t.id} t={t} onPick={onPick} showCategory={showCategory} />
+      ))}
     </ul>
   );
-}
+});
+
+const TxnRow = memo(function TxnRow({ t, onPick, showCategory }: { t: Txn; onPick: (t: Txn) => void; showCategory?: boolean }) {
+  const cat = useCategories().get(t.category);
+  return (
+    // Off-screen rows skip layout and paint until scrolled to.
+    <li className="[contain-intrinsic-size:auto_3.25rem] [content-visibility:auto]">
+      <button type="button" onClick={() => onPick(t)} className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-accent">
+        <span className="tabular w-14 shrink-0 text-xs text-muted-foreground">{date(t.date)}</span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="flex items-center gap-1.5">
+            <span className="truncate font-medium">{t.merchant || t.raw}</span>
+            {t.needsReview && <AlertCircle className="size-3.5 shrink-0 text-[var(--warn)]" aria-label="Check this one" />}
+            {t.foreign && <Globe className="size-3.5 shrink-0 text-muted-foreground" aria-label="Foreign" />}
+          </span>
+          <span className="truncate text-xs text-muted-foreground">
+            {showCategory && t.category ? (
+              <span className="mr-1.5 inline-flex items-center gap-1">
+                <Swatch slot={cat.slot} className="size-2" />
+                {cat.name} ·
+              </span>
+            ) : null}
+            {t.kind !== 'purchase' ? `${txnKindNames[t.kind]} · ` : ''}
+            {t.raw}
+          </span>
+        </span>
+        <span className="flex flex-col items-end">
+          <Money cents={t.myAmount ?? t.amount} className={t.excluded ? 'text-muted-foreground line-through' : ''} />
+          {t.myAmount !== t.amount ? (
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              {t.othersShare ? <Users className="size-3" aria-label="Shared" /> : <PenLine className="size-3" aria-label="Your cost, edited" />} of{' '}
+              {money(t.amount)}
+            </span>
+          ) : null}
+        </span>
+      </button>
+    </li>
+  );
+});
 
 /** Grab and similar descriptors cover different things (ride vs food). */
 const ambiguousKeys = new Set(['grab', 'shopee', 'amazon']);

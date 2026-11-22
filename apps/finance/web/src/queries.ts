@@ -9,7 +9,9 @@ import { api, type Catalog, type Category, type Goal, type TxnPatch, type TxnQue
 
 export const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 20_000, refetchOnWindowFocus: true, retry: 1 },
+    // Data only changes through this app (mutations invalidate what they
+    // touch) and imports (polled), so cached pages can stay fresh a while.
+    queries: { staleTime: 60_000, refetchOnWindowFocus: true, retry: 1 },
   },
 });
 
