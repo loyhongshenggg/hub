@@ -23,6 +23,7 @@ func TestClean(t *testing.T) {
 		{raw: "Fotonica- MRK S.P.A. Milano IT", name: "FOTONICA", branch: "MRK S.P.A.", key: "fotonica", foreign: true},
 		{raw: "7-ELEVEN TPY SINGAPORE SG", name: "7-ELEVEN", branch: "TPY", key: "7eleven"},
 		{raw: "SMILEDENTALSTUDIO _ Singapore SG", name: "SMILEDENTALSTUDIO", key: "smiledentalstudio"},
+		{raw: "ADYEN SG-Zensho Japanese Restaurant Company", name: "ZENSHO JAPANESE RESTAURANT COMPANY", key: "zenshojapaneserestaurantcompany"},
 	}
 	for _, c := range cases {
 		d := Clean(c.raw)
@@ -68,6 +69,7 @@ func TestResolveBrandsAndSpecials(t *testing.T) {
 		{"PYMT @ AXS -THANK YOU", true, "Card payment", "", "payment"},
 		{"DCC FEE", false, "DCC Fee", "fees", "fee"},
 		{"fp*Food Panda Singapore SG", false, "foodpanda", "delivery", "purchase"},
+		{"PINDUODUONEW ShangHai CN", false, "Pinduoduo", "shopping", "purchase"},
 		{"SHOPEE SG MP SINGAPORE SG", true, "Shopee", "shopping", "refund"},
 		{"AMZNPRIMESG MEMBERSHI SINGAPORE SG", false, "Amazon Prime", "subscriptions", "purchase"},
 		{"AMAZON MAR* AMAZON SG SINGAPORE SG", false, "Amazon", "shopping", "purchase"},

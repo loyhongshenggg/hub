@@ -24,6 +24,7 @@ brands:
   - { name: Taobao, category: shopping, contains: [TAOBAO] }
   - { name: Qoo10, category: shopping, contains: [QOO10] }
   - { name: Temu, category: shopping, starts: [TEMU] }
+  - { name: Pinduoduo, category: shopping, starts: [PINDUODUO] }
   - { name: AliExpress, category: shopping, contains: [ALIEXPRESS] }
   - { name: Carousell, category: shopping, contains: [CAROUSELL] }
 

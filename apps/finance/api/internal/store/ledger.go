@@ -214,6 +214,12 @@ func scanStatement(sc interface{ Scan(...any) error }) (Statement, error) {
 }
 
 // Statements lists imports, newest period first.
+// SetStatementPages records how many pages a statement's PDF has.
+func (s *Store) SetStatementPages(ctx context.Context, id int64, pages int) error {
+	_, err := s.db.ExecContext(ctx, "UPDATE statements SET pages = ? WHERE id = ?", pages, id)
+	return err
+}
+
 func (s *Store) Statements(ctx context.Context) ([]Statement, error) {
 	rows, err := s.db.QueryContext(ctx, "SELECT "+stmtCols+" FROM statements s ORDER BY s.period_end DESC, s.id DESC")
 	if err != nil {

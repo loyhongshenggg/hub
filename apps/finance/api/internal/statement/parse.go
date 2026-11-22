@@ -1,5 +1,6 @@
-// Package statement parses OCR'd credit-card statements into a summary and
-// transactions, and checks them against the statement's own totals.
+// Package statement parses credit-card and bank-account statements (their
+// text layer, or OCR) into a summary and transactions, and checks them
+// against the statement's own totals.
 package statement
 
 import (
@@ -16,6 +17,10 @@ import (
 // Summary is what the statement says about itself. Amounts are cents;
 // nil means not found.
 type Summary struct {
+	// Kind is "bank" for a bank account (money in raises the balance);
+	// empty for a credit card (purchases raise what you owe).
+	Kind        string    `json:"kind,omitempty"`
+	Holder      string    `json:"holder,omitempty"` // account holder's name, when printed
 	Bank        string    `json:"bank"`
 	Product     string    `json:"product"`
 	Last4       string    `json:"last4"`
@@ -45,12 +50,21 @@ type Txn struct {
 	// Conf is Tesseract's mean confidence (0-100) for the description words;
 	// used to pick the best reading of a row across passes.
 	Conf float64 `json:"-"`
+	// Bank-account rows (see classify): Kind is the transaction kind when
+	// the statement says it ("transfer", "income", "payment", "refund"),
+	// Counterparty who the money went to or came from, Note a message
+	// worth keeping, Check asks you to confirm.
+	Kind         string `json:"kind,omitempty"`
+	Counterparty string `json:"counterparty,omitempty"`
+	Note         string `json:"note,omitempty"`
+	Check        bool   `json:"check,omitempty"`
 }
 
 // Parsed is the result of reading one OCR pass.
 type Parsed struct {
 	Summary Summary
 	Txns    []Txn
+	Pages   int // pages in the PDF
 	// orphans are lines in the transaction column that end in an amount
 	// but have no readable dates (used only to close a reconciliation gap).
 	orphans []Txn
@@ -61,8 +75,15 @@ type Parsed struct {
 var (
 	// 1,838.31 · 942.00CR · (292.00) · -5.00 · $17.99 — parentheses, a minus
 	// or CR mark a credit.
-	reAmount = regexp.MustCompile(`^([-(])?(?:S?\$)?([0-9][0-9,.]*\.[0-9]{2})\)?(CR)?$`)
-	rePeriod = regexp.MustCompile(`(?i)from\s+(\d{1,2})\s*([a-z0-9]{3,4})\s*(\d{4})\s+to\s+(\d{1,2})\s*([a-z0-9]{3,4})\s*(\d{4})`)
+	// A leading + marks money in on bank statements (Trust: "+300.00").
+	// OCR reads "S$" as "$$" or "5$".
+	reAmount = regexp.MustCompile(`^([-(+])?(?:[S5$]?\$)?([0-9][0-9,.]*\.[0-9]{2})\)?(CR)?$`)
+	// "From 07 SEP 2026 to 05 OCT 2026", "1 SEP 2026 TO 30 SEP 2026",
+	// "1 Sep 2026 - 30 Sep 2026".
+	rePeriod = regexp.MustCompile(`(?i)(?:from\s+)?\b(\d{1,2})\s*([a-z0-9]{3,9})\s*(\d{4})\s*(?:to|-|–)\s*(\d{1,2})\s*([a-z0-9]{3,9})\s*(\d{4})\b`)
+	reAcctNo = regexp.MustCompile(`(?i)\baccount\b(?:\s+(?:no\.?|number|statement))?\s*:?\s*(\d[\d -]{4,}\d)\b`)
+	reFXLine = regexp.MustCompile(`^1\s+[A-Z]{3}\s*=\s*[0-9.]+\s+[A-Z]{3}\b`)
+	reCCY    = regexp.MustCompile(`^[A-Z]{3}$`)
 	reCard   = regexp.MustCompile(`(?i)\b\d{4}[- ]?x{4}[- ]?x{4}[- ]?(\d{4})\b`)
 	reCardSp = regexp.MustCompile(`\b\d{4} \d{4} \d{4} (\d{4})\b`)
 	reMasked = regexp.MustCompile(`(?i)^x{4}-x{4}-x{4}-\d{4}$`)
@@ -116,18 +137,104 @@ func month(tok string) (time.Month, bool) {
 type dayMonth struct {
 	day   int
 	month time.Month
+	year  int // 0 when the statement prints no year
+}
+
+var (
+	reNumDate = regexp.MustCompile(`^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4}|\d{2})$`)            // 31/10/2026, 31-10-26
+	reISODate = regexp.MustCompile(`^(\d{4})-(\d{1,2})-(\d{1,2})$`)                          // 2026-10-31
+	reDashMon = regexp.MustCompile(`^(\d{1,2})[-/ ]([A-Za-z]{3,9})(?:[-/ ](\d{4}|\d{2}))?$`) // 31-Oct-2026
+	reYear    = regexp.MustCompile(`^(\d{4}),?$`)
+)
+
+func fullYear(s string) int {
+	y, _ := strconv.Atoi(s)
+	if y < 100 {
+		y += 2000
+	}
+	return y
+}
+
+// numericDate reads one-token dates: 31/10/2026, 31-10-26, 2026-10-31,
+// 31-Oct-2026. Day/month order is Singapore's (day first) unless the
+// numbers only fit month first.
+func numericDate(tok string) (dayMonth, bool) {
+	tok = strings.TrimRight(tok, ",")
+	var d, m, y int
+	switch {
+	case reISODate.MatchString(tok):
+		g := reISODate.FindStringSubmatch(tok)
+		y, _ = strconv.Atoi(g[1])
+		m, _ = strconv.Atoi(g[2])
+		d, _ = strconv.Atoi(g[3])
+	case reNumDate.MatchString(tok):
+		g := reNumDate.FindStringSubmatch(tok)
+		d, _ = strconv.Atoi(g[1])
+		m, _ = strconv.Atoi(g[2])
+		y = fullYear(g[3])
+		if m > 12 && d <= 12 {
+			d, m = m, d
+		}
+	case reDashMon.MatchString(tok):
+		g := reDashMon.FindStringSubmatch(tok)
+		mo, ok := month(g[2])
+		if !ok {
+			return dayMonth{}, false
+		}
+		m = int(mo)
+		d, _ = strconv.Atoi(g[1])
+		if g[3] != "" {
+			y = fullYear(g[3])
+		}
+	default:
+		return dayMonth{}, false
+	}
+	if d < 1 || d > 31 || m < 1 || m > 12 || y != 0 && (y < 1990 || y > 2100) {
+		return dayMonth{}, false
+	}
+	return dayMonth{d, time.Month(m), y}, true
 }
 
 // readDate reads "07 Sep" (two tokens) or "07Sep" (one) at toks[i].
 func readDate(toks []string, i int) (dayMonth, int, bool) {
+	dm, j, ok := readDayMonth(toks, i)
+	if !ok {
+		// "Oct 31, 2026" (month first).
+		if i+1 < len(toks) {
+			if mo, mok := month(toks[i]); mok && len(toks[i]) >= 3 && letters(toks[i]) == len(strings.TrimRight(toks[i], ".")) {
+				if d, err := strconv.Atoi(strings.TrimRight(toks[i+1], ",")); err == nil && d >= 1 && d <= 31 {
+					dm, j, ok = dayMonth{d, mo, 0}, i+2, true
+				}
+			}
+		}
+		if !ok {
+			return dm, j, false
+		}
+	}
+	// A year after the day and month ("07 Sep 2026").
+	if dm.year == 0 && j < len(toks) {
+		if m := reYear.FindStringSubmatch(toks[j]); m != nil {
+			if y, _ := strconv.Atoi(m[1]); y >= 1990 && y <= 2100 {
+				dm.year, j = y, j+1
+			}
+		}
+	}
+	return dm, j, true
+}
+
+// readDayMonth reads "07 Sep" (two tokens), "07Sep" or a numeric date at toks[i].
+func readDayMonth(toks []string, i int) (dayMonth, int, bool) {
 	if i >= len(toks) {
 		return dayMonth{}, i, false
+	}
+	if dm, ok := numericDate(toks[i]); ok {
+		return dm, i + 1, true
 	}
 	if m := reDayMon.FindStringSubmatch(toks[i]); m != nil && strings.ContainsAny(strings.ToLower(m[2]), "abcdefghijklmnopqrstuvwxyz") {
 		if mo, ok := month(m[2]); ok {
 			d, _ := strconv.Atoi(m[1])
 			if d >= 1 && d <= 31 {
-				return dayMonth{d, mo}, i + 1, true
+				return dayMonth{d, mo, 0}, i + 1, true
 			}
 		}
 	}
@@ -137,12 +244,12 @@ func readDate(toks []string, i int) (dayMonth, int, bool) {
 			return dayMonth{}, i, false
 		}
 		if mo, ok := month(toks[i+1]); ok {
-			return dayMonth{d, mo}, i + 2, true
+			return dayMonth{d, mo, 0}, i + 2, true
 		}
 		// OCR split the month: "08 Se p".
 		if i+2 < len(toks) && len(toks[i+1])+len(toks[i+2]) == 3 {
 			if mo, ok := month(toks[i+1] + toks[i+2]); ok {
-				return dayMonth{d, mo}, i + 3, true
+				return dayMonth{d, mo, 0}, i + 3, true
 			}
 		}
 	}
@@ -221,6 +328,7 @@ type row struct {
 	dated     bool
 	conf      float64
 	foreign   string
+	refund    bool // marked REFUND on the line below (Trust)
 }
 
 // parseRow reads "DD Mon DD Mon description amount[CR]". A row with one
@@ -232,6 +340,13 @@ func parseRow(l line) (row, bool) {
 		return row{}, false
 	}
 	r := row{amount: a, credit: credit, page: l.page}
+	// A foreign-currency column before the SGD amount ("45.49 CNY 8.68").
+	if at >= 2 && reCCY.MatchString(toks[at-1]) {
+		if _, _, ok := parseAmount(toks[at-2]); ok {
+			r.foreign = toks[at-2] + " " + toks[at-1]
+			at -= 2
+		}
+	}
 	d1, i, ok1 := readDate(toks, 0)
 	if !ok1 {
 		r.desc = strings.Join(toks[:at], " ")
@@ -261,7 +376,7 @@ func parseRow(l line) (row, bool) {
 
 // labels that end a statement's transaction list or are not transactions.
 var stopLines = []string{"continuedonnextpage", "totaldue", "previousstatementbalance", "balancepreviousstatement",
-	"endofstatement", "subtotal", "grandtotal", "totalforthecard"}
+	"endofstatement", "subtotal", "grandtotal", "totalforthecard", "previousbalance", "openingbalance", "closingbalance"}
 
 func isStop(s string) bool {
 	n := norm(s)
@@ -293,7 +408,11 @@ func letterRatio(s string) float64 {
 // Parse reads OCR'd pages. It works for HSBC Singapore and any statement
 // laid out as "post date, transaction date, description, amount[CR]".
 func Parse(pages []ocr.Page) Parsed {
+	if isLedger(pages) {
+		return parseLedger(pages)
+	}
 	var p Parsed
+	p.Pages = len(pages)
 	var all []line
 	for _, pg := range pages {
 		lines := groupLines(pg.Number, pg.Words)
@@ -305,10 +424,19 @@ func Parse(pages []ocr.Page) Parsed {
 	fix := func(ts []row) []Txn {
 		out := make([]Txn, 0, len(ts))
 		for _, r := range ts {
-			out = append(out, Txn{
+			t := Txn{
 				PostDate: year(r.post), TxnDate: year(r.txn), Description: r.desc,
 				Amount: r.amount, Credit: r.credit, Page: r.page, Y: r.y, Conf: r.conf, Foreign: r.foreign,
-			})
+			}
+			if p.Summary.Kind == "bank" {
+				// A bank account's card-style rows (Trust): own transfers,
+				// interest, refunds and people are told apart from purchases.
+				t.Kind, t.Counterparty, t.Note, t.Check = classify([]string{r.desc}, r.credit, p.Summary.Holder)
+				if r.refund {
+					t.Kind = "refund"
+				}
+			}
+			out = append(out, t)
 		}
 		return out
 	}
@@ -337,13 +465,15 @@ func (p *Parsed) parsePage(pg ocr.Page, lines []line) {
 		descX = l.words[hdr].X0
 		// AMOUNT(SGD) may be split by OCR ("AMOU NT(SGD)"); the header row
 		// can also carry a summary panel's own header to the right.
+		// With two amount columns ("Amount in FCY … Amount in SGD", Trust)
+		// the last one is the account's own currency.
 		amountR := -1
 		rest := l.words[hdr+1:]
-		for i, w := range rest {
-			if !strings.Contains(norm(w.Text), "amou") {
+		for i := len(rest) - 1; i >= 0; i-- {
+			if !strings.Contains(norm(rest[i].Text), "amou") {
 				continue
 			}
-			amountR = w.X1
+			amountR = rest[i].X1
 			for _, nx := range rest[i+1:] {
 				if nx.X0-amountR > pg.Width/60 {
 					break
@@ -380,8 +510,22 @@ func (p *Parsed) parsePage(pg ocr.Page, lines []line) {
 			last = nil
 			continue
 		}
+		// A repeated column header ("Date  Name  Amount") ends the row above.
+		if n := norm(txt); len(l.words) <= 8 && strings.Contains(n, "date") &&
+			(strings.Contains(n, "amount") || strings.Contains(n, "description") || strings.Contains(n, "name")) {
+			last = nil
+			continue
+		}
 		// "XXXX-XXXX-XXXX-0142": which card was used, not part of the name.
 		if reMasked.MatchString(strings.TrimSpace(txt)) {
+			continue
+		}
+		// "1 CNY = 0.1908 SGD TRUST FX CHARGE = 0% [REFUND]" under a Trust row.
+		if reFXLine.MatchString(strings.TrimSpace(txt)) {
+			if last != nil && strings.Contains(strings.ToUpper(txt), "REFUND") {
+				last.refund = true
+			}
+			lastY1 = l.y1
 			continue
 		}
 		// "FOREIGN AMOUNT MALAYSIAN RINGGIT 19.76" under an overseas row.
@@ -392,6 +536,11 @@ func (p *Parsed) parsePage(pg ocr.Page, lines []line) {
 		}
 		r, ok := parseRow(l)
 		r.y = float64(l.y0) / float64(max(1, pg.Height))
+		if ok && isStop(r.desc) {
+			// "01 Sep Previous balance 912.25": a balance, not a transaction.
+			last = nil
+			continue
+		}
 		if ok {
 			p.rows = append(p.rows, r)
 			last = &p.rows[len(p.rows)-1]
@@ -523,6 +672,13 @@ func parseSummary(lines []line, pages []ocr.Page) Summary {
 	}
 	if s.Total == nil {
 		s.Total = amount(true, "Total Account Balance", "Total Due", "Statement Balance", "Current Balance")
+	}
+	s.Holder = holderName(lines)
+	// Trust-style summary: Opening balance + Total incoming − Total outgoing
+	// + Interest = Closing balance.
+	if trustSummary(&s, lines) {
+		s.Kind = "bank"
+		bankHeader(&s, lines, width)
 	}
 	for _, b := range findLabel(lines, "Payment Due Date") {
 		if d, ok := dateRight(lines, b); ok {
@@ -734,6 +890,9 @@ func yearResolver(s Summary) func(dayMonth) time.Time {
 		ref = time.Now().UTC()
 	}
 	return func(dm dayMonth) time.Time {
+		if dm.year != 0 {
+			return time.Date(dm.year, dm.month, dm.day, 0, 0, 0, 0, time.UTC)
+		}
 		best := time.Time{}
 		bestDist := time.Duration(1<<63 - 1)
 		for _, y := range []int{ref.Year() - 1, ref.Year(), ref.Year() + 1} {
@@ -755,4 +914,101 @@ func abs(x int) int {
 		return -x
 	}
 	return x
+}
+
+// holderName reads the account holder printed beside "Statement of Account"
+// / "Account Statement" on page 1 ("LOY TAN … STATEMENT OF ACCOUNT").
+func holderName(lines []line) string {
+	for _, l := range lines {
+		if l.page != 1 {
+			continue
+		}
+		n := norm(l.text())
+		if !strings.Contains(n, "statementofaccount") && !strings.Contains(n, "accountstatement") {
+			continue
+		}
+		// The name is in capitals, right before the heading.
+		var name []string
+		heading := false
+		for _, w := range l.words {
+			u := strings.ToUpper(w.Text)
+			if u == "STATEMENT" || u == "ACCOUNT" {
+				heading = true
+				break
+			}
+			if letters(w.Text) != len(w.Text) || u != w.Text {
+				name = nil
+				break
+			}
+			name = append(name, w.Text)
+		}
+		if heading && len(name) >= 2 && len(name) <= 5 {
+			return strings.Join(name, " ")
+		}
+	}
+	return ""
+}
+
+// bankHeader fills a bank account's number (last 4) and product name.
+func bankHeader(s *Summary, lines []line, width func(int) int) {
+	s.Product, s.Last4 = "", ""
+	for _, l := range lines {
+		if l.page != 1 {
+			continue
+		}
+		t := l.text()
+		if s.Last4 == "" {
+			if m := reAcctNo.FindStringSubmatch(t); m != nil {
+				digits := strings.Map(func(r rune) rune {
+					if r >= '0' && r <= '9' {
+						return r
+					}
+					return -1
+				}, m[1])
+				if len(digits) >= 4 {
+					s.Last4 = digits[len(digits)-4:]
+				}
+			}
+		}
+		if s.Product == "" {
+			h := headline(l, width(l.page))
+			low := strings.ToLower(h)
+			words := strings.Fields(h)
+			if len(words) >= 2 && len(words) <= 5 && strings.Contains(low, "account") && letters(strings.Join(words, "")) == len(strings.Join(words, "")) &&
+				!strings.Contains(low, "statement") && !strings.Contains(low, "summary") && !strings.HasPrefix(low, "main ") {
+				s.Product = h
+			}
+		}
+	}
+}
+
+// trustSummary reads a one-row balance table: opening, money in, money out,
+// interest, closing (the last row with five amounts under the header).
+func trustSummary(s *Summary, lines []line) bool {
+	for i, l := range lines {
+		n := norm(l.text())
+		if !strings.Contains(n, "openingbalance") || !strings.Contains(n, "closingbalance") {
+			continue
+		}
+		var vals []int64
+		for _, nx := range lines[i+1 : min(len(lines), i+5)] {
+			var amts []int64
+			for _, w := range nx.words {
+				if a, _, ok := parseAmount(w.Text); ok {
+					amts = append(amts, a)
+				}
+			}
+			if len(amts) == 5 {
+				vals = amts
+			}
+		}
+		if vals == nil {
+			continue
+		}
+		// Interest is paid in as a row of its own, so it counts as money in.
+		prev, in, out, closing := vals[0], vals[1]+vals[3], vals[2], vals[4]
+		s.PrevBalance, s.Credits, s.Debits, s.Total = &prev, &in, &out, &closing
+		return true
+	}
+	return false
 }

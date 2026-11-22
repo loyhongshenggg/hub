@@ -115,10 +115,10 @@ func TestParse(t *testing.T) {
 
 func TestYearAcrossNewYear(t *testing.T) {
 	y := yearResolver(Summary{PeriodStart: time.Date(2026, 12, 7, 0, 0, 0, 0, time.UTC), PeriodEnd: time.Date(2027, 1, 5, 0, 0, 0, 0, time.UTC)})
-	if got := y(dayMonth{30, time.November}); got.Year() != 2026 {
+	if got := y(dayMonth{day: 30, month: time.November}); got.Year() != 2026 {
 		t.Errorf("30 Nov → %d", got.Year())
 	}
-	if got := y(dayMonth{3, time.January}); got.Year() != 2027 {
+	if got := y(dayMonth{day: 3, month: time.January}); got.Year() != 2027 {
 		t.Errorf("3 Jan → %d", got.Year())
 	}
 }

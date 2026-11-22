@@ -74,7 +74,7 @@ function ImportHome() {
         {busy ? <Loader2 className="size-8 animate-spin text-muted-foreground" /> : <FileUp className="size-8 text-muted-foreground" />}
         <div>
           <div className="font-medium">Drop credit-card statement PDFs here</div>
-          <div className="text-sm text-muted-foreground">HSBC and Citibank Singapore are supported fully; other banks' “date · description · amount” layouts usually work.</div>
+          <div className="text-sm text-muted-foreground">Credit cards: HSBC and Citibank. Bank accounts: OCBC and Trust (DBS/POSB-style ledgers should work). Other “date · name · amount” layouts usually work too.</div>
         </div>
         <Button variant="outline" onClick={() => input.current?.click()} disabled={busy}>
           Choose files
@@ -136,9 +136,10 @@ function statusLine(s: Statement) {
 }
 
 function gapText(s: Statement): string {
+  const bank = s.summary.kind === 'bank';
   const parts: string[] = [];
-  if (s.recon.debitsGap) parts.push(`purchases off by ${money(s.recon.debitsGap)}`);
-  if (s.recon.creditsGap) parts.push(`credits off by ${money(s.recon.creditsGap)}`);
+  if (s.recon.debitsGap) parts.push(`${bank ? 'money out' : 'purchases'} off by ${money(s.recon.debitsGap)}`);
+  if (s.recon.creditsGap) parts.push(`${bank ? 'money in' : 'credits'} off by ${money(s.recon.creditsGap)}`);
   return `Needs a look: ${parts.join(', ')}`;
 }
 
@@ -182,10 +183,12 @@ function StatementDetail({ id }: { id: number }) {
   const st = statusLine(s);
   const Icon = st.icon;
   const pages = Array.from({ length: Math.max(s.pages, 1) }, (_, i) => i + 1);
+  const bank = s.summary.kind === 'bank';
   const rows: [string, number | null | undefined, number][] = [
-    ['Purchases & debits', s.summary.debits, s.recon.debits ?? 0],
-    ['Payments & credits', s.summary.credits, s.recon.credits ?? 0],
+    [bank ? 'Money out' : 'Purchases & debits', s.summary.debits, s.recon.debits ?? 0],
+    [bank ? 'Money in' : 'Payments & credits', s.summary.credits, s.recon.credits ?? 0],
   ];
+  const exact = s.passes.length === 1 && s.passes[0] === 'text layer';
 
   return (
     <div className="flex flex-col gap-5">
@@ -261,10 +264,10 @@ function StatementDetail({ id }: { id: number }) {
               ))}
               {s.summary.total != null && (
                 <tr className="border-t">
-                  <td className="py-1.5">Total balance</td>
+                  <td className="py-1.5">{bank ? 'Closing balance' : 'Total balance'}</td>
                   <td className="tabular py-1.5 text-right">{money(s.summary.total)}</td>
                   <td className="py-1.5 text-right text-xs text-muted-foreground">
-                    {s.recon.summaryOk ? 'previous + purchases − credits ✓' : 'summary doesn’t add up'}
+                    {!s.recon.summaryOk ? 'summary doesn’t add up' : bank ? 'opening + money in − money out ✓' : 'previous + purchases − credits ✓'}
                   </td>
                   <td />
                 </tr>
@@ -279,8 +282,15 @@ function StatementDetail({ id }: { id: number }) {
             </ul>
           )}
           <p className="mt-3 text-xs text-muted-foreground">
-            Read with {plural(s.passes.length, 'OCR pass', 'OCR passes')}
-            {s.passes.length > 1 ? ' (later passes re-read the page at higher resolution to fill gaps)' : ''}. Missing a line? Add it in Transactions → Add.
+            {exact ? (
+              'Read exactly from the PDF’s own text'
+            ) : (
+              <>
+                Read with {plural(s.passes.filter((x) => x !== 'text layer').length, 'OCR pass', 'OCR passes')}
+                {s.passes.length > 1 ? ' (later passes re-read the page at higher resolution to fill gaps)' : ''}
+              </>
+            )}
+            . Missing a line? Add it in Transactions → Add.
           </p>
         </Section>
       )}

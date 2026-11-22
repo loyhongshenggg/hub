@@ -33,7 +33,10 @@ func Reconcile(s Summary, txns []Txn) Recon {
 			r.Debits += t.Amount
 		}
 	}
-	if s.PrevBalance != nil && s.Debits != nil && s.Credits != nil && s.Total != nil {
+	if s.PrevBalance != nil && s.Debits != nil && s.Credits != nil && s.Total != nil && s.Kind == "bank" {
+		// A bank account: money in raises the balance.
+		r.SummaryOK = *s.PrevBalance+*s.Credits-*s.Debits == *s.Total
+	} else if s.PrevBalance != nil && s.Debits != nil && s.Credits != nil && s.Total != nil {
 		bal := *s.PrevBalance + *s.Debits - *s.Credits
 		// A balance in credit prints "Total Due 0.00".
 		r.SummaryOK = bal == *s.Total || *s.Total == 0 && bal <= 0
@@ -57,6 +60,7 @@ type Result struct {
 	Recon    Recon    `json:"recon"`
 	Passes   []string `json:"passes"` // OCR passes that ran
 	Warnings []string `json:"warnings,omitempty"`
+	Pages    int      `json:"pages"` // pages in the PDF
 }
 
 // TextLayerReader reads a PDF's own text (no OCR), if it has any.
@@ -91,7 +95,8 @@ func Read(ctx context.Context, eng ocr.Engine, pdfPath string, progress func(str
 	// fallback for image-only ones (HSBC) or when the text doesn't add up.
 	if tl, ok := eng.(TextLayerReader); ok {
 		progress("Reading the PDF's text…")
-		if pages, err := tl.TextLayer(ctx, pdfPath); err == nil && countWords(pages) > 50 {
+		// Even a short table is read exactly; if it yields no rows, OCR runs.
+		if pages, err := tl.TextLayer(ctx, pdfPath); err == nil && countWords(pages) >= 8 {
 			reads = append(reads, Parse(pages))
 			names = append(names, "text layer")
 			if res := Combine(reads); res.Recon.OK || !res.Recon.Checked && len(res.Txns) > 0 {
@@ -140,6 +145,9 @@ func countWords(pages []ocr.Page) int {
 // other passes saw (or that one pass read with a different amount).
 func Combine(reads []Parsed) *Result {
 	res := &Result{}
+	for _, r := range reads {
+		res.Pages = max(res.Pages, r.Pages)
+	}
 	// Summary: the first one that is internally consistent, else the first
 	// with the most fields.
 	res.Summary = reads[0].Summary

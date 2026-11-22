@@ -55,6 +55,7 @@ func (im *Importer) PDFPath(sha string) string {
 // Run processes queued statements until ctx ends. Statements interrupted by
 // a restart are queued again.
 func (im *Importer) Run(ctx context.Context) {
+	im.fixPageCounts(ctx)
 	if ids, err := im.Store.PendingStatements(ctx); err == nil {
 		for _, id := range ids {
 			im.Enqueue(id)
@@ -69,6 +70,32 @@ func (im *Importer) Run(ctx context.Context) {
 			im.mu.Lock()
 			delete(im.queued, id)
 			im.mu.Unlock()
+		}
+	}
+}
+
+// fixPageCounts gives statements read before 2026-11-22 their PDF's real
+// page count (they stored the last page with a row, so a statement with no
+// rows on later pages, or none at all, only showed page 1).
+func (im *Importer) fixPageCounts(ctx context.Context) {
+	tl, ok := im.OCR.(statement.TextLayerReader)
+	if !ok {
+		return
+	}
+	sts, err := im.Store.Statements(ctx)
+	if err != nil {
+		return
+	}
+	for _, st := range sts {
+		if st.Status != store.StDone && st.Status != store.StReview {
+			continue
+		}
+		pages, err := tl.TextLayer(ctx, im.PDFPath(st.SHA256))
+		if err != nil || len(pages) <= st.Pages {
+			continue
+		}
+		if err := im.Store.SetStatementPages(ctx, st.ID, len(pages)); err == nil {
+			im.Log.Info("statement page count fixed", "id", st.ID, "pages", len(pages))
 		}
 	}
 }
@@ -113,6 +140,13 @@ func (im *Importer) process(ctx context.Context, id int64) {
 	inst := s.Bank
 	if inst == "" {
 		inst = "Card"
+		if s.Kind == "bank" {
+			inst = "Bank"
+		}
+	}
+	kind := "credit_card"
+	if s.Kind == "bank" {
+		kind = "bank"
 	}
 	name := inst
 	if s.Product != "" {
@@ -121,7 +155,7 @@ func (im *Importer) process(ctx context.Context, id int64) {
 	if s.Last4 != "" {
 		name += " ··" + s.Last4
 	}
-	acct, err := im.Store.EnsureAccount(ctx, store.Account{Name: name, Institution: inst, Last4: s.Last4, Kind: "credit_card", Currency: s.Currency})
+	acct, err := im.Store.EnsureAccount(ctx, store.Account{Name: name, Institution: inst, Last4: s.Last4, Kind: kind, Currency: s.Currency})
 	if err != nil {
 		fail(err.Error())
 		return
@@ -134,7 +168,8 @@ func (im *Importer) process(ctx context.Context, id int64) {
 	if res.Recon.Checked && !res.Recon.OK {
 		status = store.StReview
 	}
-	pages := 0
+	// Every page of the PDF can be viewed, not just pages with rows.
+	pages := res.Pages
 	for _, t := range res.Txns {
 		pages = max(pages, t.Page)
 	}
@@ -176,19 +211,33 @@ func titleProduct(product, bank string) string {
 
 // toTxn resolves a statement row into a stored transaction.
 func (im *Importer) toTxn(t statement.Txn) store.Txn {
-	d, m, kind := im.Resolver.Resolve(t.Description, t.Credit)
+	// Bank-account rows name the other side ("to SINGAPORE POOLS"): match
+	// the merchant on that, keep the full line as the raw text.
+	name := t.Description
+	if t.Counterparty != "" {
+		name = t.Counterparty
+	}
+	d, m, kind := im.Resolver.Resolve(name, t.Credit)
+	if t.Kind != "" && m.Source != "rule" {
+		// What the statement says (own transfer, salary, card bill…) wins
+		// over a guess from the name; your own rules still win over both.
+		kind = t.Kind
+		if kind != catalog.Purchase && kind != catalog.Refund {
+			m = merchant.Match{Name: t.Counterparty, Confidence: 1, Source: "statement"}
+		}
+	}
 	amount := t.Amount
 	if t.Credit {
 		amount = -amount
 	}
-	review := false
+	review := t.Check
 	switch kind {
 	case catalog.Purchase, catalog.Refund:
-		review = m.Check || m.Confidence < merchant.AutoConfidence
+		review = review || m.Check || m.Confidence < merchant.AutoConfidence
 	}
-	note := ""
+	note := t.Note
 	if t.Foreign != "" {
-		note = "Paid in " + strings.ToLower(t.Foreign)
+		note = strings.TrimSpace(note + " Paid in " + strings.ToLower(t.Foreign))
 	}
 	return store.Txn{
 		Date: t.TxnDate.Format("2006-01-02"), Posted: t.PostDate.Format("2006-01-02"), Raw: t.Description,
@@ -284,6 +333,12 @@ func (im *Importer) Rematch(ctx context.Context) (int, error) {
 	}
 	n := 0
 	for key, raw := range keys {
+		// Bank-account rows were matched on their payee, not their raw line
+		// ("FAST PAYMENT via PayNow-UEN to …"): re-reading the raw line
+		// would replace a good match with nonsense.
+		if merchant.Clean(raw).Key != key {
+			continue
+		}
 		_, m, _ := im.Resolver.Resolve(raw, false)
 		if m.Source == "rule" || m.Source == "special" {
 			continue

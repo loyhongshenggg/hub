@@ -87,8 +87,9 @@ func Clean(raw string) Descriptor {
 	s = reSpace.ReplaceAllString(s, " ")
 	s = strings.TrimLeft(s, "_=-~. ")
 	s = strings.TrimPrefix(s, "WWW.")
-	// Cross-border checkout processors put their name first.
-	for _, p := range []string{"GLOBALE ", "GLOBAL-E "} {
+	// Checkout processors put their name first ("GLOBALE BANDAI…",
+	// PayNow "ADYEN SG-ZENSHO").
+	for _, p := range []string{"GLOBALE ", "GLOBAL-E ", "ADYEN SG-", "ADYEN SG ", "ADYEN "} {
 		s = strings.TrimPrefix(s, p)
 	}
 	s = strings.ReplaceAll(s, " N/A ", " ")

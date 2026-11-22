@@ -208,6 +208,8 @@ export interface Overview {
 }
 
 export interface Summary {
+  kind?: 'bank'; // a bank account; absent for a credit card
+  holder?: string;
   bank: string;
   product: string;
   last4: string;

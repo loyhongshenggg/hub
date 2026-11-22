@@ -509,7 +509,7 @@ func TestTxnsForGoal(t *testing.T) {
 	add("2026-11-07", "other", "income", "Salary", 6000_00)   // not counted: not spending
 	skip := add("2026-11-08", "shopping", "purchase", "Uniqlo", 59_90)
 	call(t, srv, "PATCH", "/api/transactions/"+itoa(skip), map[string]any{"excluded": true}, nil) // not counted: excluded
-	add("2026-10-30", "dining", "purchase", "Toast Box", 8_00) // other month
+	add("2026-10-30", "dining", "purchase", "Toast Box", 8_00)                                    // other month
 
 	var g struct {
 		store.Goal
