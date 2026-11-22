@@ -498,6 +498,7 @@ export const api = {
   reread: (id: number) => req<void>('POST', `/api/statements/${id}/reread`),
 
   goals: () => req<{ goals: GoalView[] }>('GET', '/api/goals').then((r) => r.goals),
+  reorderGoals: (ids: number[]) => req<void>('PUT', '/api/goals/order', { ids }),
   goal: (id: number) => req<GoalView>('GET', `/api/goals/${id}`),
   createGoal: (g: Partial<Goal>) => req<GoalView>('POST', '/api/goals', goalBody(g)),
   updateGoal: (g: Goal) => req<GoalView>('PUT', `/api/goals/${g.id}`, goalBody(g)),

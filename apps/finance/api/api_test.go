@@ -448,3 +448,48 @@ func TestGoalEditRoundTrip(t *testing.T) {
 		t.Errorf("check-in %d %+v", code, v.Entries)
 	}
 }
+
+func TestGoalReorder(t *testing.T) {
+	srv, _ := setup(t)
+	var ids []int64
+	for _, title := range []string{"A", "B", "C"} {
+		var g store.Goal
+		call(t, srv, "POST", "/api/goals", map[string]any{"kind": "target", "title": title, "target": 100_00}, &g)
+		ids = append(ids, g.ID)
+	}
+	order := func() string {
+		var l struct{ Goals []store.Goal }
+		call(t, srv, "GET", "/api/goals", nil, &l)
+		s := ""
+		for _, g := range l.Goals {
+			s += g.Title
+		}
+		return s
+	}
+	if o := order(); o != "ABC" {
+		t.Fatalf("new goals go last: %s", o)
+	}
+	if code := call(t, srv, "PUT", "/api/goals/order", map[string]any{"ids": []int64{ids[2], ids[0], ids[1]}}, nil); code != 204 || order() != "CAB" {
+		t.Errorf("reorder %d: %s", code, order())
+	}
+	// Editing a goal with a stale position keeps the new order.
+	var g map[string]any
+	call(t, srv, "GET", "/api/goals/"+itoa(ids[1]), nil, &g)
+	g["sort"], g["title"] = 0, "B2"
+	call(t, srv, "PUT", "/api/goals/"+itoa(ids[1]), g, nil)
+	if o := order(); o != "CAB2" {
+		t.Errorf("edit moved the goal: %s", o)
+	}
+	for name, body := range map[string]any{
+		"unknown id":   map[string]any{"ids": []int64{ids[0], 9999}},
+		"duplicate id": map[string]any{"ids": []int64{ids[0], ids[0]}},
+		"bad body":     map[string]any{"order": []int64{ids[0]}},
+	} {
+		if code := call(t, srv, "PUT", "/api/goals/order", body, nil); code < 400 {
+			t.Errorf("%s: %d", name, code)
+		}
+	}
+	if o := order(); o != "CAB2" {
+		t.Errorf("a refused reorder changed the order: %s", o)
+	}
+}

@@ -218,7 +218,9 @@ func (a *api) saveGoal(w http.ResponseWriter, r *http.Request) {
 			fail(w, err)
 			return
 		}
-		g.ID, g.Source, g.Prompt, g.CreatedAt = id, old.Source, old.Prompt, old.CreatedAt
+		// The position only changes through PUT /api/goals/order, so a form
+		// opened before a reorder can't move the goal back.
+		g.ID, g.Source, g.Prompt, g.CreatedAt, g.Sort = id, old.Source, old.Prompt, old.CreatedAt, old.Sort
 		if g.Status == "achieved" && old.AchievedAt != nil {
 			g.AchievedAt = old.AchievedAt
 		}
@@ -456,4 +458,28 @@ func nonNil(xs []string) []string {
 		return []string{}
 	}
 	return xs
+}
+
+// reorderGoals saves the order of the goal cards: {"ids": [3, 1, 2]}.
+func (a *api) reorderGoals(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		IDs []int64 `json:"ids"`
+	}
+	if err := decode(r, &in); err != nil {
+		writeError(w, 400, err.Error())
+		return
+	}
+	seen := map[int64]bool{}
+	for _, id := range in.IDs {
+		if id <= 0 || seen[id] {
+			writeError(w, 400, "ids must be distinct goal ids")
+			return
+		}
+		seen[id] = true
+	}
+	if err := a.store.ReorderGoals(r.Context(), in.IDs); err != nil {
+		fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -5,7 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { api, type Catalog, type Category, type Goal, type TxnPatch, type TxnQuery } from './api';
+import { api, type Catalog, type Category, type Goal, type GoalView, type TxnPatch, type TxnQuery } from './api';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -123,4 +123,33 @@ export function useSaveGoal() {
       void qc.invalidateQueries({ queryKey: keys.goals });
     },
   });
+}
+
+/**
+ * useReorderGoals saves a new order for some goals (one section of cards).
+ * The cached list is reordered at once, and restored if saving fails.
+ */
+export function useReorderGoals() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: number[]) => api.reorderGoals(ids),
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: keys.goals });
+      const prev = qc.getQueryData<GoalView[]>(keys.goals);
+      if (prev) qc.setQueryData(keys.goals, reorderWithin(prev, ids));
+      return { prev };
+    },
+    onError: (_e, _ids, ctx) => {
+      if (ctx?.prev) qc.setQueryData(keys.goals, ctx.prev);
+    },
+    onSettled: () => void qc.invalidateQueries({ queryKey: keys.goals }),
+  });
+}
+
+/** reorderWithin puts the goals in ids into the slots they already occupy, in ids order. */
+export function reorderWithin(goals: GoalView[], ids: number[]): GoalView[] {
+  const byId = new Map(goals.map((g) => [g.id, g]));
+  const queue = ids.map((id) => byId.get(id)).filter((g): g is GoalView => !!g);
+  const moving = new Set(queue.map((g) => g.id));
+  return goals.map((g) => (moving.has(g.id) ? (queue.shift() ?? g) : g));
 }

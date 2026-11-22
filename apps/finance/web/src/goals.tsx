@@ -1,11 +1,11 @@
 import { Button, cn, Input, Sheet, SheetContent, SheetDescription, SheetTitle } from '@hub/ui-kit';
 import { Archive, Check, Flag, Loader2, Pause, PenLine, Play, Plus, Sparkles, Target, Trash2, Trophy, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
 import { api, type Drafts, type GoalView } from './api';
 import { BalanceLine, PeriodBars } from './charts';
 import { blankGoal, GoalForm, goalFormError, type GoalDraft } from './goal-form';
 import { areaNames, date, kindNames, money, monthYear, plural, toCents, today } from './format';
-import { keys, queryClient, useCategories, useClaude, useGoal, useGoals, useSaveGoal } from './queries';
+import { keys, queryClient, useCategories, useClaude, useGoal, useGoals, useReorderGoals, useSaveGoal } from './queries';
 import { go, href, type Route } from './router';
 import { Empty, ErrorNote, Field, Meter, Money, Section, StatusChip, textareaCls } from './ui';
 
@@ -44,21 +44,13 @@ export function GoalsPage({ route }: { route: Route }) {
           in your history.
         </Empty>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {active.map((g) => (
-            <GoalCard key={g.id} g={g} />
-          ))}
-        </div>
+        <SortableGoals goals={active} label="Active goals" />
       )}
 
       {paused.length > 0 && (
         <div>
           <h2 className="mb-2 text-sm font-medium text-muted-foreground">Paused</h2>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {paused.map((g) => (
-              <GoalCard key={g.id} g={g} />
-            ))}
-          </div>
+          <SortableGoals goals={paused} label="Paused goals" />
         </div>
       )}
 
@@ -71,13 +63,150 @@ export function GoalsPage({ route }: { route: Route }) {
   );
 }
 
-function GoalCard({ g }: { g: GoalView }) {
+/**
+ * SortableGoals: a grid of goal cards you can reorder by dragging, or with
+ * Alt + arrow keys on a focused card. The order is saved at once.
+ */
+function SortableGoals({ goals, label }: { goals: GoalView[]; label: string }) {
+  const reorder = useReorderGoals();
+  const [order, setOrder] = useState<number[] | null>(null); // while dragging or saving
+  const [dragId, setDragId] = useState<number | null>(null);
+  const startOrder = useRef<number[]>([]);
+  const nodes = useRef(new Map<number, HTMLElement>());
+  const rects = useRef(new Map<number, DOMRect>());
+  const refocus = useRef<number | null>(null);
+  const hintId = useId();
+
+  const serverIds = goals.map((g) => g.id);
+  const sameSet = order !== null && order.length === serverIds.length && order.every((id) => serverIds.includes(id));
+  if (order !== null && (!sameSet || (dragId === null && order.join() === serverIds.join()))) setOrder(null);
+  const ids = sameSet && order ? order : serverIds;
+  const byId = new Map(goals.map((g) => [g.id, g]));
+
+  // Slide cards to their new places (FLIP), unless reduced motion is on.
+  useLayoutEffect(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const next = new Map<number, DOMRect>();
+    for (const [id, el] of nodes.current) {
+      const r = el.getBoundingClientRect();
+      next.set(id, r);
+      const was = rects.current.get(id);
+      if (!reduce && was && (was.left !== r.left || was.top !== r.top) && el.animate) {
+        el.animate([{ transform: `translate(${was.left - r.left}px, ${was.top - r.top}px)` }, { transform: 'none' }], {
+          duration: 180,
+          easing: 'cubic-bezier(0.2, 0, 0, 1)',
+        });
+      }
+    }
+    rects.current = next;
+    if (refocus.current !== null) {
+      nodes.current.get(refocus.current)?.focus();
+      refocus.current = null;
+    }
+  });
+
+  const moveTo = (list: number[], id: number, to: number) => {
+    const from = list.indexOf(id);
+    if (from < 0 || to < 0 || to >= list.length || from === to) return list;
+    const next = list.filter((x) => x !== id);
+    next.splice(to, 0, id);
+    return next;
+  };
+  const save = (next: number[]) => {
+    setOrder(next);
+    reorder.mutate(next, { onError: () => setOrder(null) }); // back to the saved order
+  };
+
+  const handlers = (id: number) => ({
+    draggable: true,
+    onDragStart: (e: DragEvent) => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(id));
+      startOrder.current = ids;
+      setOrder(ids);
+      setDragId(id);
+    },
+    onDragOver: (e: DragEvent) => {
+      if (dragId === null) return; // a drag from elsewhere (another section, a file)
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (id !== dragId) {
+        const next = moveTo(ids, dragId, ids.indexOf(id));
+        if (next !== ids) setOrder(next);
+      }
+    },
+    onDrop: (e: DragEvent) => e.preventDefault(),
+    onDragEnd: () => {
+      setDragId(null);
+      if (ids.join() !== startOrder.current.join()) save(ids);
+      else setOrder(null);
+    },
+    onKeyDown: (e: KeyboardEvent) => {
+      if (!e.altKey) return;
+      const step = e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : 0;
+      if (!step) return;
+      e.preventDefault();
+      const next = moveTo(ids, id, ids.indexOf(id) + step);
+      if (next !== ids) {
+        refocus.current = id;
+        save(next);
+      }
+    },
+  });
+
+  return (
+    <>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="list" aria-label={label} aria-describedby={hintId}>
+        {ids.map((id) => {
+          const g = byId.get(id);
+          return g ? (
+            <div
+              key={id}
+              role="listitem"
+              ref={(el) => {
+                if (el) nodes.current.set(id, el);
+                else nodes.current.delete(id);
+              }}
+              className="flex"
+            >
+              <GoalCard g={g} dragging={dragId === id} {...handlers(id)} />
+            </div>
+          ) : null;
+        })}
+      </div>
+      <span id={hintId} className="sr-only">
+        Drag a goal to reorder, or press Alt and an arrow key.
+      </span>
+      {reorder.error && <ErrorNote error={reorder.error} />}
+    </>
+  );
+}
+
+type CardDrag = {
+  dragging?: boolean;
+  draggable?: boolean;
+  onDragStart?: (e: DragEvent) => void;
+  onDragOver?: (e: DragEvent) => void;
+  onDrop?: (e: DragEvent) => void;
+  onDragEnd?: () => void;
+  onKeyDown?: (e: KeyboardEvent) => void;
+};
+
+function GoalCard({ g, dragging, ...drag }: { g: GoalView } & CardDrag) {
   const p = g.progress;
   const isLimit = g.kind === 'limit';
   const count = isLimit && g.metric === 'count';
   const fmt = (v: number) => (count ? String(v) : money(v, { whole: v >= 100000 }));
   return (
-    <a href={href('goals', g.id)} className="fade-up flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-xs transition-colors hover:bg-accent/50">
+    <a
+      href={href('goals', g.id)}
+      {...drag}
+      title={drag.draggable ? 'Drag to reorder' : undefined}
+      className={cn(
+        'flex w-full flex-col gap-3 rounded-xl border bg-card p-4 shadow-xs transition-[background-color,opacity] hover:bg-accent/50',
+        dragging && 'opacity-40',
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-xs text-muted-foreground">

@@ -143,6 +143,22 @@ func (s *Store) SaveGoal(ctx context.Context, g Goal) (int64, error) {
 	return g.ID, notFound(res, err)
 }
 
+// ReorderGoals gives the goals their position in ids order (sort 0, 1, …).
+// Goals not listed keep theirs.
+func (s *Store) ReorderGoals(ctx context.Context, ids []int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for i, id := range ids {
+		if err := notFound(tx.ExecContext(ctx, "UPDATE goals SET sort = ? WHERE id = ?", i, id)); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 // DeleteGoal deletes a goal and its check-ins.
 func (s *Store) DeleteGoal(ctx context.Context, id int64) error {
 	res, err := s.db.ExecContext(ctx, "DELETE FROM goals WHERE id = ?", id)

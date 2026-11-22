@@ -58,6 +58,7 @@ func (a *api) routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/goals/{id}/entries", a.addEntry)
 	mux.HandleFunc("DELETE /api/goals/{id}/entries/{entry}", a.deleteEntry)
 	mux.HandleFunc("POST /api/goals/draft", a.draftGoals)
+	mux.HandleFunc("PUT /api/goals/order", a.reorderGoals)
 	a.splitRoutes(mux)
 
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, _ *http.Request) { writeError(w, 404, "no such endpoint") })
