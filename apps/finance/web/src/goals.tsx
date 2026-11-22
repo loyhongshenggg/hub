@@ -66,14 +66,20 @@ export function GoalsPage({ route }: { route: Route }) {
 /**
  * SortableGoals: a grid of goal cards you can reorder by dragging, or with
  * Alt + arrow keys on a focused card. The order is saved at once.
+ *
+ * Dragging stays steady because the drop slot comes from where the cards
+ * will be (their layout boxes, which slide animations don't move), and the
+ * card just swapped with is ignored until the pointer leaves it.
  */
 function SortableGoals({ goals, label }: { goals: GoalView[]; label: string }) {
   const reorder = useReorderGoals();
   const [order, setOrder] = useState<number[] | null>(null); // while dragging or saving
   const [dragId, setDragId] = useState<number | null>(null);
+  const grid = useRef<HTMLDivElement>(null);
   const startOrder = useRef<number[]>([]);
   const nodes = useRef(new Map<number, HTMLElement>());
-  const rects = useRef(new Map<number, DOMRect>());
+  const from = useRef<Map<number, DOMRect> | null>(null); // positions before a reorder (FLIP)
+  const settle = useRef<number | null>(null); // card just swapped with
   const refocus = useRef<number | null>(null);
   const hintId = useId();
 
@@ -83,22 +89,30 @@ function SortableGoals({ goals, label }: { goals: GoalView[]; label: string }) {
   const ids = sameSet && order ? order : serverIds;
   const byId = new Map(goals.map((g) => [g.id, g]));
 
-  // Slide cards to their new places (FLIP), unless reduced motion is on.
+  /** setIds reorders the cards, remembering where each one is on screen now. */
+  const setIds = (next: number[]) => {
+    from.current = new Map([...nodes.current].map(([id, el]) => [id, el.getBoundingClientRect()]));
+    setOrder(next);
+  };
+
+  // Slide each moved card from where it was to its new place (FLIP),
+  // continuing smoothly if it was already sliding. Off with reduced motion.
   useLayoutEffect(() => {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const next = new Map<number, DOMRect>();
-    for (const [id, el] of nodes.current) {
-      const r = el.getBoundingClientRect();
-      next.set(id, r);
-      const was = rects.current.get(id);
-      if (!reduce && was && (was.left !== r.left || was.top !== r.top) && el.animate) {
-        el.animate([{ transform: `translate(${was.left - r.left}px, ${was.top - r.top}px)` }, { transform: 'none' }], {
-          duration: 180,
-          easing: 'cubic-bezier(0.2, 0, 0, 1)',
-        });
+    const before = from.current;
+    from.current = null;
+    if (before && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      for (const [id, el] of nodes.current) {
+        const was = before.get(id);
+        if (!was) continue;
+        el.getAnimations().forEach((a) => a.cancel());
+        const now = el.getBoundingClientRect();
+        const dx = was.left - now.left;
+        const dy = was.top - now.top;
+        if (dx || dy) {
+          el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(0.2, 0, 0, 1)' });
+        }
       }
     }
-    rects.current = next;
     if (refocus.current !== null) {
       nodes.current.get(refocus.current)?.focus();
       refocus.current = null;
@@ -106,15 +120,41 @@ function SortableGoals({ goals, label }: { goals: GoalView[]; label: string }) {
   });
 
   const moveTo = (list: number[], id: number, to: number) => {
-    const from = list.indexOf(id);
-    if (from < 0 || to < 0 || to >= list.length || from === to) return list;
+    const at = list.indexOf(id);
+    if (at < 0 || to < 0 || to >= list.length || at === to) return list;
     const next = list.filter((x) => x !== id);
     next.splice(to, 0, id);
     return next;
   };
   const save = (next: number[]) => {
-    setOrder(next);
+    setIds(next);
     reorder.mutate(next, { onError: () => setOrder(null) }); // back to the saved order
+  };
+
+  /** The card whose layout box (ignoring slide animations) holds the point. */
+  const cardAt = (x: number, y: number): number | null => {
+    const box = grid.current?.getBoundingClientRect();
+    if (!box) return null;
+    const px = x - box.left;
+    const py = y - box.top;
+    for (const [id, el] of nodes.current) {
+      if (px >= el.offsetLeft && px < el.offsetLeft + el.offsetWidth && py >= el.offsetTop && py < el.offsetTop + el.offsetHeight) return id;
+    }
+    return null;
+  };
+
+  const onGridDragOver = (e: DragEvent) => {
+    if (dragId === null) return; // a drag from elsewhere (another section, a file)
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const over = cardAt(e.clientX, e.clientY);
+    if (over !== settle.current) settle.current = null; // left the card we swapped with
+    if (over === null || over === dragId || over === settle.current) return;
+    const next = moveTo(ids, dragId, ids.indexOf(over));
+    if (next !== ids) {
+      settle.current = over;
+      setIds(next);
+    }
   };
 
   const handlers = (id: number) => ({
@@ -123,21 +163,13 @@ function SortableGoals({ goals, label }: { goals: GoalView[]; label: string }) {
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', String(id));
       startOrder.current = ids;
+      settle.current = null;
       setOrder(ids);
       setDragId(id);
     },
-    onDragOver: (e: DragEvent) => {
-      if (dragId === null) return; // a drag from elsewhere (another section, a file)
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      if (id !== dragId) {
-        const next = moveTo(ids, dragId, ids.indexOf(id));
-        if (next !== ids) setOrder(next);
-      }
-    },
-    onDrop: (e: DragEvent) => e.preventDefault(),
     onDragEnd: () => {
       setDragId(null);
+      settle.current = null;
       if (ids.join() !== startOrder.current.join()) save(ids);
       else setOrder(null);
     },
@@ -156,7 +188,15 @@ function SortableGoals({ goals, label }: { goals: GoalView[]; label: string }) {
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="list" aria-label={label} aria-describedby={hintId}>
+      <div
+        ref={grid}
+        className="relative grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+        role="list"
+        aria-label={label}
+        aria-describedby={hintId}
+        onDragOver={onGridDragOver}
+        onDrop={(e) => dragId !== null && e.preventDefault()}
+      >
         {ids.map((id) => {
           const g = byId.get(id);
           return g ? (
@@ -186,8 +226,6 @@ type CardDrag = {
   dragging?: boolean;
   draggable?: boolean;
   onDragStart?: (e: DragEvent) => void;
-  onDragOver?: (e: DragEvent) => void;
-  onDrop?: (e: DragEvent) => void;
   onDragEnd?: () => void;
   onKeyDown?: (e: KeyboardEvent) => void;
 };
